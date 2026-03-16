@@ -1,0 +1,106 @@
+{
+  "name": "uniqstock",
+  "version": "0.9.0-beta.1",
+  "buildVersion": "0.9.80327",
+  "description": "UniqStock - software de gestão de estoque desenvolvido por UniqCode Programação",
+  "main": "electron-main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "desktop": "electron .",
+    "licenca:gerar": "node scripts/gerar-licenca.js",
+    "dist:win": "electron-builder --win nsis",
+    "dist:win:unsigned": "electron-builder --win nsis --publish never",
+    "dist:win:signed": "node scripts/check-signing-env.js && electron-builder --win nsis --publish never",
+    "build:win:ps1": "powershell -ExecutionPolicy Bypass -File scripts/build-win.ps1",
+    "lint:js": "eslint \"**/*.js\"",
+    "lint:js:fix": "eslint \"**/*.js\" --fix",
+    "lint:html": "htmlhint \"public/**/*.html\"",
+    "lint": "npm run lint:html && npm run lint:js",
+    "lint:ci": "npm run lint",
+    "prestart": "npm run lint:js:fix",
+    "predev": "npm run lint:js:fix",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "UniqCode Programação",
+  "supportPhone": "+55 95 99110-9917",
+  "license": "ISC",
+      "dependencies": {
+        "@supabase/supabase-js": "^2.98.0",
+        "bcryptjs": "^3.0.3",
+        "chart.js": "^4.5.1",
+        "csv-parser": "^3.2.0",
+    "electron-updater": "^6.8.3",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "html5-qrcode": "^2.3.8",
+        "multer": "^2.1.1",
+        "pdfkit": "^0.17.2",
+        "qrcode": "^1.5.4",
+        "sqlite3": "^5.1.7",
+        "xlsx": "^0.18.5"
+      },
+  "devDependencies": {
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.3",
+    "eslint": "^8.57.1",
+    "htmlhint": "^1.9.2",
+    "husky": "^9.1.7"
+  },
+  "build": {
+    "appId": "com.uniqcode.uniqstock",
+    "productName": "UniqStock",
+    "artifactName": "UniqStock-Setup-${version}.${ext}",
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!backups/**",
+      "!db/**",
+      "!runtime/**",
+      "!updates/**",
+      "!tmp/**",
+      "!temp/**",
+      "!uploads/**",
+      "!**/*.db",
+      "!.env",
+      "!.env.*",
+      "!**/*.log"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/uniqcode.ico",
+      "publisherName": "UniqCode Programação",
+      "signAndEditExecutable": false
+    },
+    "forceCodeSigning": false,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "UniqStock"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "fabiobr1to",
+        "repo": "uniqstock"
+      }
+    ]
+  }
+}

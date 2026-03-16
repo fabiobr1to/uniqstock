@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel | UniqStock</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="sidebar-auth.js" defer></script>
+    <script src="topbar-user.js" defer></script>
+    <script src="mobile-menu.js" defer></script>
+    <style>
+        .dashboard-header {
+            margin-bottom: 14px;
+        }
+
+        .dashboard-header h2 {
+            font-size: 26px;
+            margin-bottom: 2px;
+        }
+
+        .dashboard-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .dashboard-toolbar .btn-atalho {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #fff;
+            background: #111827;
+            font-weight: bold;
+        }
+
+        .dashboard-toolbar .btn-atalho.primario {
+            background: var(--primary);
+        }
+
+        .dashboard-alertas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .dashboard-alerta {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: transform .15s ease, filter .15s ease;
+        }
+
+        .dashboard-alerta:hover {
+            transform: translateY(-1px);
+            filter: brightness(0.98);
+        }
+
+        .dashboard-alerta.ativo {
+            outline: 2px solid rgba(17, 24, 39, .25);
+        }
+
+        .dashboard-alerta.risco {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .dashboard-alerta.alerta {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .dashboard-alerta.ok {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .dashboard-overview {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+        }
+
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .card-resumo .numero {
+            font-size: 42px;
+            line-height: 1;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+
+        .card-resumo.filtravel {
+            cursor: pointer;
+        }
+
+        .card-meta {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .status-semaforo {
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-semaforo.ok {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-semaforo.alerta {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .status-semaforo.risco {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .dashboard-grafico {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px;
+        }
+
+        .dashboard-grafico h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+
+        .grafico-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .grafico-item {
+            display: grid;
+            grid-template-columns: 90px 1fr 36px;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .grafico-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .grafico-barra {
+            height: 8px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            overflow: hidden;
+        }
+
+        .grafico-barra span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #22c55e);
+        }
+
+        .painel-tabela-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        #buscaPainel {
+            width: 100%;
+            max-width: 320px;
+        }
+
+        #painelResumoTabela {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .dashboard-table table {
+            min-width: 980px;
+        }
+
+        .dashboard-table tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .dashboard-table tbody tr:hover {
+            background: #fff8f8;
+        }
+
+        .dashboard-table .col-estoque {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: bold;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+                <p>Sistema de Inventário</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="ativo"><span class="sidebar-icon">🏠</span> Painel</a>
+                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+                <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+                <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+                <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+                <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+            <div class="sidebar-footer">
+                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header dashboard-header">
+                <h2>Painel</h2>
+                <p>Resumo geral do inventário</p>
+            </header>
+
+            <div class="container">
+                <div class="dashboard-toolbar">
+                    <a class="btn-atalho primario" href="cadastro-ferramenta.html">➕ Cadastrar</a>
+                    <a class="btn-atalho" href="cadastro-ferramenta.html">📥 Importar</a>
+                    <a class="btn-atalho" href="index.html">🏷️ Imprimir lote</a>
+                </div>
+
+                <div id="dashboardAlertas" class="dashboard-alertas"></div>
+                <p id="dashboardMensagem" class="texto-ajuda" aria-live="polite">Carregando dados...</p>
+
+                <section class="dashboard-overview">
+                    <div class="dashboard-cards">
+                        <div class="card-resumo">
+                            <div id="totalItens" class="numero">0</div>
+                            <p>Total de itens</p>
+                            <div class="card-meta">Atualizado em tempo real</div>
+                        </div>
+
+                        <div class="card-resumo filtravel" id="cardEstoqueStatus" title="Filtrar itens por status do estoque">
+                            <div id="totalEstoque" class="numero">0</div>
+                            <p>Estoque total</p>
+                            <div id="statusSemaforo" class="status-semaforo ok">Status geral: OK</div>
+                        </div>
+
+                        <div class="card-resumo">
+                            <div id="totalCategorias" class="numero">0</div>
+                            <p>Categorias</p>
+                            <div class="card-meta">Top categorias ao lado</div>
+                        </div>
+                    </div>
+
+                    <aside class="dashboard-grafico">
+                        <h3>Top 5 categorias</h3>
+                        <div id="graficoCategorias" class="grafico-lista"></div>
+                    </aside>
+                </section>
+
+                <section class="painel-lista">
+          <h2>Itens cadastrados</h2>
+                    <div class="painel-tabela-head">
+                        <input type="text" id="buscaPainel" placeholder="Buscar por código, ferramenta, categoria...">
+                        <span id="painelResumoTabela">0 itens carregados</span>
+                    </div>
+
+                    <div class="tabela-wrap dashboard-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Ferramenta</th>
+                                    <th>Categoria</th>
+                                    <th>Marca / Modelo</th>
+                                    <th>Localização</th>
+                                    <th class="col-estoque">Estoque</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaItens"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        let itensCache = [];
+        let filtroStatusAtivo = "todos";
+
+        function redirecionarPorAcesso(status) {
+            if (status === 401) {
+                window.location.href = "login.html";
+                return true;
+            }
+
+            if (status === 403) {
+                window.location.href = "acesso-negado.html";
+                return true;
+            }
+
+            return false;
+        }
+
+        function definirMensagemDashboard(texto, tipo = "info") {
+            const mensagem = document.getElementById("dashboardMensagem");
+            if (!mensagem) return;
+
+            mensagem.textContent = String(texto || "");
+            mensagem.style.color = tipo === "erro" ? "#991b1b" : "#6b7280";
+        }
+
+        function obterEstoque(item) {
+            return Number(item?.estoque_atual ?? 0);
+        }
+
+        function criarCelulaTabela(texto, title = "") {
+            const td = document.createElement("td");
+            td.textContent = String(texto ?? "");
+            if (title) {
+                td.title = String(title);
+            }
+            return td;
+        }
+
+        function calcularStatus(item) {
+            const estoque = obterEstoque(item);
+            if (estoque <= 0) return "zerado";
+            if (estoque <= 2) return "baixo";
+            return "ok";
+        }
+
+        function atualizarAlertas(itens) {
+            const host = document.getElementById("dashboardAlertas");
+            const zerados = itens.filter((item) => calcularStatus(item) === "zerado").length;
+            const baixos = itens.filter((item) => calcularStatus(item) === "baixo").length;
+            const ok = itens.filter((item) => calcularStatus(item) === "ok").length;
+
+            host.innerHTML = `
+                <button type="button" class="dashboard-alerta risco" data-filtro-status="zerado">⛔ ${zerados} itens zerados</button>
+                <button type="button" class="dashboard-alerta alerta" data-filtro-status="baixo">⚠️ ${baixos} itens com estoque baixo</button>
+                <button type="button" class="dashboard-alerta ok" data-filtro-status="ok">✅ ${ok} itens com estoque OK</button>
+                <button type="button" class="dashboard-alerta" data-filtro-status="todos" style="background:#e5e7eb;color:#1f2937;">🔄 Ver todos</button>
+            `;
+            host.querySelectorAll("[data-filtro-status]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    aplicarFiltroStatus(btn.dataset.filtroStatus || "todos");
+                });
+            });
+
+            const semaforo = document.getElementById("statusSemaforo");
+            semaforo.className = "status-semaforo";
+            if (zerados > 0) {
+                semaforo.classList.add("risco");
+                semaforo.textContent = "Status geral: Risco";
+            } else if (baixos > 0) {
+                semaforo.classList.add("alerta");
+                semaforo.textContent = "Status geral: Atenção";
+            } else {
+                semaforo.classList.add("ok");
+                semaforo.textContent = "Status geral: OK";
+            }
+
+            atualizarEstadoVisualFiltro();
+        }
+
+        function atualizarEstadoVisualFiltro() {
+            document.querySelectorAll("[data-filtro-status]").forEach((el) => {
+                const ativo = (el.dataset.filtroStatus || "todos") === filtroStatusAtivo;
+                el.classList.toggle("ativo", ativo);
+            });
+        }
+
+        function renderGraficoCategorias(itens) {
+            const host = document.getElementById("graficoCategorias");
+            const mapa = new Map();
+
+            itens.forEach((item) => {
+                const cat = (item.categoria || "Sem categoria").trim() || "Sem categoria";
+                mapa.set(cat, (mapa.get(cat) || 0) + 1);
+            });
+
+            const top = Array.from(mapa.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            host.innerHTML = "";
+            if (!top.length) {
+                const vazio = document.createElement("span");
+                vazio.className = "texto-ajuda";
+                vazio.textContent = "Sem dados para exibir.";
+                host.appendChild(vazio);
+                return;
+            }
+
+            const max = top[0][1];
+            top.forEach(([nome, valor]) => {
+                const largura = Math.max(8, Math.round((valor / max) * 100));
+                const item = document.createElement("div");
+                item.className = "grafico-item";
+                item.title = `${nome}: ${valor}`;
+
+                const label = document.createElement("span");
+                label.className = "grafico-label";
+                label.textContent = nome;
+
+                const barra = document.createElement("div");
+                barra.className = "grafico-barra";
+
+                const progresso = document.createElement("span");
+                progresso.style.width = `${largura}%`;
+                barra.appendChild(progresso);
+
+                const total = document.createElement("strong");
+                total.textContent = String(valor);
+
+                item.appendChild(label);
+                item.appendChild(barra);
+                item.appendChild(total);
+                host.appendChild(item);
+            });
+        }
+
+        function renderTabela(itens) {
+            const tabela = document.getElementById("tabelaItens");
+            const resumo = document.getElementById("painelResumoTabela");
+            tabela.innerHTML = "";
+
+            itens.forEach((item) => {
+                const estoque = obterEstoque(item);
+                const tr = document.createElement("tr");
+                tr.appendChild(criarCelulaTabela(item.codigo || ""));
+                tr.appendChild(criarCelulaTabela(item.ferramenta || "", item.ferramenta || ""));
+                tr.appendChild(criarCelulaTabela(item.categoria || ""));
+                tr.appendChild(criarCelulaTabela(item.marca_modelo || "", item.marca_modelo || ""));
+                tr.appendChild(criarCelulaTabela(item.localizacao || "", item.localizacao || ""));
+                const tdEstoque = criarCelulaTabela(estoque);
+                tdEstoque.className = "col-estoque";
+                tr.appendChild(tdEstoque);
+                tabela.appendChild(tr);
+            });
+
+            resumo.textContent = `${itens.length} itens carregados`;
+        }
+
+        function filtrarPorStatus(lista) {
+            if (filtroStatusAtivo === "todos") return lista;
+            return lista.filter((item) => calcularStatus(item) === filtroStatusAtivo);
+        }
+
+        function aplicarBusca() {
+            const termo = String(document.getElementById("buscaPainel").value || "").trim().toLowerCase();
+            const base = filtrarPorStatus(itensCache);
+            const filtrados = !termo
+                ? base
+                : base.filter((item) => {
+                    const alvo = [
+                        item.codigo,
+                        item.ferramenta,
+                        item.categoria,
+                        item.marca_modelo,
+                        item.localizacao
+                    ].join(" ").toLowerCase();
+                    return alvo.includes(termo);
+                });
+            renderTabela(filtrados);
+        }
+
+        function aplicarFiltroStatus(status) {
+            filtroStatusAtivo = status || "todos";
+            atualizarEstadoVisualFiltro();
+            aplicarBusca();
+        }
+
+        async function carregarDashboard() {
+            definirMensagemDashboard("Carregando dados...");
+
+            try {
+                const resposta = await fetch("/api/itens");
+                if (redirecionarPorAcesso(resposta.status)) {
+                    return;
+                }
+
+                const itens = await resposta.json().catch(() => null);
+                if (!resposta.ok) {
+                    definirMensagemDashboard(
+                        itens?.error || "Não foi possível carregar o painel agora.",
+                        "erro"
+                    );
+                    return;
+                }
+
+                if (!Array.isArray(itens)) {
+                    definirMensagemDashboard("Resposta inválida ao carregar o painel.", "erro");
+                    return;
+                }
+
+                const totalItens = document.getElementById("totalItens");
+                const totalEstoque = document.getElementById("totalEstoque");
+                const totalCategorias = document.getElementById("totalCategorias");
+                itensCache = Array.isArray(itens) ? itens : [];
+
+                totalItens.textContent = itens.length;
+
+                const somaEstoque = itens.reduce((acc, item) => {
+                    return acc + obterEstoque(item);
+                }, 0);
+
+                totalEstoque.textContent = somaEstoque;
+
+                const categoriasUnicas = new Set(
+                    itens
+                        .map(item => (item.categoria || "").trim())
+                        .filter(categoria => categoria !== "")
+                );
+
+                totalCategorias.textContent = categoriasUnicas.size;
+                atualizarAlertas(itensCache);
+                renderGraficoCategorias(itensCache);
+                renderTabela(itensCache);
+                definirMensagemDashboard(`Painel atualizado com ${itens.length} itens.`);
+
+            } catch (erro) {
+                definirMensagemDashboard("Falha de conexão ao carregar o painel.", "erro");
+                console.error("Erro ao carregar dashboard:", erro);
+            }
+        }
+
+        document.getElementById("buscaPainel").addEventListener("input", aplicarBusca);
+        document.getElementById("cardEstoqueStatus").addEventListener("click", () => {
+            const proximo = filtroStatusAtivo === "todos" ? "baixo" : (filtroStatusAtivo === "baixo" ? "zerado" : (filtroStatusAtivo === "zerado" ? "ok" : "todos"));
+            aplicarFiltroStatus(proximo);
+        });
+        carregarDashboard();
+    </script>
+</body>
+
+</html>
+
+
+
+
+

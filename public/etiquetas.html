@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etiquetas | UniqStock</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="sidebar-auth.js" defer></script>
+    <script src="topbar-user.js" defer></script>
+    <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+
+    <div class="app-layout">
+
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+                <p>Sistema de Inventário</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+                <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+                <a href="etiquetas.html" class="ativo"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+                <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+                <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+            <div class="sidebar-footer">
+                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+
+            <header class="page-header">
+                <h2>Etiquetas</h2>
+                <p>Geração e impressão de etiquetas com QR Code</p>
+            </header>
+
+            <div class="container">
+
+                <section class="painel-form">
+                    <h2>Selecionar item</h2>
+
+                    <div class="form-group">
+                        <label for="selectItem">Ferramenta</label>
+                        <select id="selectItem"></select>
+                    </div>
+
+                    <button type="button" onclick="gerarEtiqueta()">
+                        Gerar etiqueta
+                    </button>
+
+                    <p id="mensagemEtiquetas" class="texto-ajuda" aria-live="polite"></p>
+                </section>
+
+                <section class="painel-lista">
+                    <h2>Pré-visualização da etiqueta</h2>
+
+                    <div class="etiqueta-box">
+                        <div id="etiqueta" class="etiqueta-conteudo">
+                            <p>Selecione uma ferramenta para gerar a etiqueta</p>
+                        </div>
+                    </div>
+
+                    <br>
+
+                    <button type="button" onclick="imprimirEtiqueta()">
+                        Imprimir etiqueta
+                    </button>
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        let itens = [];
+
+        function redirecionarPorAcesso(status) {
+            if (status === 401) {
+                window.location.href = "login.html";
+                return true;
+            }
+
+            if (status === 403) {
+                window.location.href = "acesso-negado.html";
+                return true;
+            }
+
+            return false;
+        }
+
+        function escapeHtml(valor) {
+            return String(valor ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function definirMensagemEtiquetas(texto, tipo = "info") {
+            const mensagem = document.getElementById("mensagemEtiquetas");
+            if (!mensagem) return;
+
+            mensagem.textContent = String(texto || "");
+            mensagem.style.color = tipo === "erro" ? "#991b1b" : "#6b7280";
+        }
+
+        function definirEstadoItens(carregando) {
+            const select = document.getElementById("selectItem");
+            select.disabled = carregando;
+        }
+
+        async function carregarItens() {
+            definirEstadoItens(true);
+            definirMensagemEtiquetas("Carregando itens...");
+
+            try {
+                const res = await fetch("/api/itens");
+                if (redirecionarPorAcesso(res.status)) {
+                    return;
+                }
+
+                const dados = await res.json().catch(() => null);
+                if (!res.ok) {
+                    itens = [];
+                    definirMensagemEtiquetas(
+                        dados?.error || "Não foi possível carregar os itens.",
+                        "erro"
+                    );
+                    document.getElementById("etiqueta").innerHTML = `
+        <p>Não foi possível carregar a lista de itens.</p>
+      `;
+                    return;
+                }
+
+                if (!Array.isArray(dados)) {
+                    itens = [];
+                    definirMensagemEtiquetas("Resposta inválida ao carregar os itens.", "erro");
+                    document.getElementById("etiqueta").innerHTML = `
+        <p>Não foi possível carregar a lista de itens.</p>
+      `;
+                    return;
+                }
+
+                itens = dados;
+
+                const select = document.getElementById("selectItem");
+                select.innerHTML = '<option value="">Selecione uma ferramenta</option>';
+
+                itens.forEach(item => {
+                    const option = document.createElement("option");
+                    option.value = item.id; // AQUI é o ID, não o código
+                    option.textContent = `${item.codigo || "Sem código"} - ${item.ferramenta}`;
+                    select.appendChild(option);
+                });
+
+                const params = new URLSearchParams(window.location.search);
+                const idParam = params.get("id");
+                if (idParam) {
+                    select.value = idParam;
+                    gerarEtiqueta();
+                }
+                definirMensagemEtiquetas(`${itens.length} itens disponíveis para etiqueta.`);
+            } catch (erro) {
+                itens = [];
+                definirMensagemEtiquetas("Falha de conexão ao carregar os itens.", "erro");
+                document.getElementById("etiqueta").innerHTML = `
+        <p>Falha de conexão ao carregar a lista de itens.</p>
+      `;
+                console.error("Erro ao carregar itens:", erro);
+            } finally {
+                definirEstadoItens(false);
+            }
+        }
+
+        async function gerarEtiqueta() {
+            const id = document.getElementById("selectItem").value;
+
+            if (!id) {
+                definirMensagemEtiquetas("Selecione uma ferramenta para gerar a etiqueta.");
+                document.getElementById("etiqueta").innerHTML = `
+        <p>Selecione uma ferramenta para gerar a etiqueta</p>
+      `;
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/qrcode/${id}`);
+                if (redirecionarPorAcesso(res.status)) {
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    const mensagemErro = escapeHtml(data.error || "Erro ao gerar QR Code");
+                    definirMensagemEtiquetas(mensagemErro, "erro");
+                    document.getElementById("etiqueta").innerHTML = `
+          <p>${mensagemErro}</p>
+        `;
+                    return;
+                }
+
+                const item = itens.find(i => String(i.id) === String(id));
+                const ferramenta = escapeHtml(item?.ferramenta || "-");
+                const codigo = escapeHtml(item?.codigo || "-");
+                const categoria = escapeHtml(item?.categoria || "-");
+
+                document.getElementById("etiqueta").innerHTML = `
+        <img src="/img/uniqstock-logo.png" alt="UniqCode" class="etiqueta-logo">
+        <h3>${ferramenta}</h3>
+        <div class="etiqueta-info">
+          <p><strong>Código:</strong> ${codigo}</p>
+          <p><strong>Categoria:</strong> ${categoria}</p>
+        </div>
+        <img src="${data.qr}" alt="QR Code" class="etiqueta-qr">
+      `;
+                definirMensagemEtiquetas("Etiqueta gerada com sucesso.");
+            } catch (erro) {
+                definirMensagemEtiquetas("Falha de conexão ao gerar a etiqueta.", "erro");
+                document.getElementById("etiqueta").innerHTML = `
+        <p>Erro ao gerar etiqueta</p>
+      `;
+                console.error(erro);
+            }
+        }
+
+        function imprimirEtiqueta() {
+            const conteudo = document.getElementById("etiqueta").outerHTML;
+            const janela = window.open("", "_blank");
+
+            janela.document.write(`
+      <html>
+        <head>
+          <title>Imprimir etiqueta</title>
+          <style>
+            @page{ size:A4; margin:8mm; }
+            body{
+              font-family:Arial, sans-serif;
+              margin:0;
+              min-height:100vh;
+              display:flex;
+              align-items:flex-start;
+              justify-content:flex-start;
+              background:#fff;
+              padding:8mm;
+              box-sizing:border-box;
+            }
+            .etiqueta-conteudo{
+              width:50mm;
+              min-height:42mm;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:flex-start;
+              text-align:center;
+              border:2px solid #000;
+              border-radius:4mm;
+              padding:3mm 2.5mm;
+              gap:0;
+              box-sizing:border-box;
+            }
+            .etiqueta-conteudo > p{
+              width:100%;
+              text-align:center;
+            }
+            .etiqueta-conteudo h3{
+              font-size:14px;
+              margin:0 0 1.1mm;
+              line-height:1.3;
+              width:100%;
+              text-align:center;
+            }
+            .etiqueta-conteudo p{
+              font-size:12px;
+              margin:0;
+              line-height:1.25;
+              width:100%;
+              text-align:center;
+            }
+            .etiqueta-logo{ max-width:24mm; height:auto; margin-bottom:1.6mm; }
+            .etiqueta-info{
+              display:flex;
+              flex-direction:column;
+              gap:.3mm;
+              width:100%;
+              text-align:center;
+              margin:0 0 1.6mm;
+              align-items:center;
+            }
+            .etiqueta-qr{ width:20mm; height:20mm; margin-top:0; }
+          </style>
+        </head>
+        <body>
+          ${conteudo}
+        </body>
+      </html>
+    `);
+
+            janela.document.close();
+            janela.focus();
+            janela.print();
+        }
+
+        carregarItens();
+    </script>
+
+</body>
+
+</html>
+
+
+
+
+
+
+
+

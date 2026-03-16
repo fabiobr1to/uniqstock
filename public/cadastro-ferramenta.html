@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Ferramenta | UniqStock</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="sidebar-auth.js" defer></script>
+    <script src="topbar-user.js" defer></script>
+    <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+                <p>Sistema de Inventário</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+                <a href="cadastro-ferramenta.html" class="ativo"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+                <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+                <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+                <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+                <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <h2>Cadastrar Ferramenta</h2>
+                <p>Cadastro e importação de itens do inventário</p>
+            </header>
+
+            <div class="container">
+                <section class="painel-form">
+                    <h2>Cadastro de item</h2>
+
+                    <div class="painel-importacao">
+                        <h3>Importar/Exportar arquivos</h3>
+
+                        <div class="importacao-acoes">
+                            <label class="btn-importar" for="arquivoImportacao">
+                                Selecionar arquivo
+                            </label>
+
+                            <input type="file" id="arquivoImportacao" accept=".csv,.xlsx,.xls,.xml,.pdf">
+
+                            <button type="button" id="btnImportarArquivo">
+                                Importar arquivo
+                            </button>
+
+                            <button type="button" id="btnExportarInventario">
+                                Exportar inventário
+                            </button>
+                        </div>
+
+                        <p id="nomeArquivoImportado">Nenhum arquivo selecionado.</p>
+                        <div id="importacaoProgresso" class="importacao-progresso" aria-hidden="true">
+                            <div id="importacaoProgressoBarra" class="importacao-progresso-barra"></div>
+                        </div>
+                        <p id="importacaoStatus" class="importacao-status"></p>
+                        <p class="texto-ajuda">
+                            Formatos aceitos: CSV, XLSX, XLS, XML e PDF textual. PDFs escaneados ou em imagem não são importados.
+                        </p>
+                    </div>
+
+                    <form id="formItem">
+                        <input type="text" id="codigo" placeholder="Código">
+                        <input type="text" id="ferramenta" placeholder="Ferramenta" required>
+                        <select id="categoria" required>
+                            <option value="Medição">Medição</option>
+                            <option value="Alicate">Alicate</option>
+                            <option value="Chave" selected>Chave</option>
+                            <option value="Soquete">Soquete</option>
+                            <option value="Catraca">Catraca</option>
+                            <option value="Elétrica">Elétrica</option>
+                            <option value="Acessório">Acessório</option>
+                            <option value="EPI">EPI</option>
+                            <option value="Tubulação">Tubulação</option>
+                            <option value="Refrigeração e hidráulica">Refrigeração e hidráulica</option>
+                            <option value="Insumo">Insumo</option>
+                        </select>
+                        <input type="text" id="marca_modelo" placeholder="Marca / Modelo">
+                        <input type="number" id="quantidade_total" placeholder="Quantidade total" min="0">
+                        <select id="localizacao">
+                            <option value="">Localização</option>
+                            <option value="Ferramentaria">Ferramentaria</option>
+                            <option value="Almoxarifado">Almoxarifado</option>
+                            <option value="Equipe Elétrica">Equipe Elétrica</option>
+                            <option value="Equipe da Civil">Equipe da Civil</option>
+                            <option value="Barracão">Barracão</option>
+                        </select>
+                        <select id="estado_inicial">
+                            <option value="">Estado atual</option>
+                            <option value="Nova">Nova</option>
+                            <option value="Boa">Boa</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Danificada">Danificada</option>
+                            <option value="Em manutenção">Em manutenção</option>
+                            <option value="Inutilizada">Inutilizada</option>
+                        </select>
+                        <button type="submit">Cadastrar</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        const form = document.getElementById("formItem");
+        const arquivoImportacao = document.getElementById("arquivoImportacao");
+        const nomeArquivoImportado = document.getElementById("nomeArquivoImportado");
+        const btnImportarArquivo = document.getElementById("btnImportarArquivo");
+        const btnExportarInventario = document.getElementById("btnExportarInventario");
+        const importacaoProgresso = document.getElementById("importacaoProgresso");
+        const importacaoProgressoBarra = document.getElementById("importacaoProgressoBarra");
+        const importacaoStatus = document.getElementById("importacaoStatus");
+        const extensoesImportacaoPermitidas = new Set([".csv", ".xlsx", ".xls", ".xml", ".pdf"]);
+        function resetarStatusImportacao() {
+            importacaoProgresso.classList.remove("ativo");
+            importacaoProgressoBarra.style.width = "0%";
+            importacaoStatus.textContent = "";
+            btnImportarArquivo.disabled = false;
+        }
+
+        function atualizarStatusImportacao(percentual, texto) {
+            importacaoProgresso.classList.add("ativo");
+            importacaoProgressoBarra.style.width = `${Math.max(0, Math.min(100, percentual))}%`;
+            importacaoStatus.textContent = texto;
+        }
+
+        function formatarRelatorioImportacao(relatorio) {
+            if (!relatorio) return "";
+            const partes = [
+                `Recebido: ${relatorio.total_recebido ?? 0}`,
+                `Importado: ${relatorio.total_importado ?? 0}`,
+                `Atualizado: ${relatorio.total_atualizado ?? 0}`,
+                `Ignorado: ${relatorio.total_ignorado ?? 0}`,
+                `Erros: ${relatorio.total_erros ?? 0}`
+            ];
+            let texto = partes.join(" | ");
+
+            if (Array.isArray(relatorio.erros) && relatorio.erros.length > 0) {
+                const topErros = relatorio.erros.slice(0, 3).map((e) => `L${e.linha}: ${e.mensagem}`).join(" | ");
+                texto += `\nErros: ${topErros}`;
+            }
+
+            if (Array.isArray(relatorio.ignorados) && relatorio.ignorados.length > 0) {
+                const topIgnorados = relatorio.ignorados.slice(0, 3).map((e) => `L${e.linha}: ${e.motivo}`).join(" | ");
+                texto += `\nIgnorados: ${topIgnorados}`;
+            }
+
+            return texto;
+        }
+
+        function showToast(mensagem, tipo = "info") {
+            const host = document.getElementById("toastHost") || (() => {
+                const el = document.createElement("div");
+                el.id = "toastHost";
+                el.className = "toast-host";
+                document.body.appendChild(el);
+                return el;
+            })();
+
+            const toast = document.createElement("div");
+            toast.className = `toast toast-${tipo}`;
+            toast.textContent = mensagem;
+            host.appendChild(toast);
+
+            setTimeout(() => toast.classList.add("show"), 10);
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 200);
+            }, 2600);
+        }
+
+        btnExportarInventario.addEventListener("click", () => {
+            window.open("/api/exportar-inventario", "_blank");
+        });
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const item = {
+                codigo: document.getElementById("codigo").value,
+                ferramenta: document.getElementById("ferramenta").value,
+                categoria: document.getElementById("categoria").value,
+                marca_modelo: document.getElementById("marca_modelo").value,
+                quantidade_total: document.getElementById("quantidade_total").value,
+                localizacao: document.getElementById("localizacao").value,
+                estado_inicial: document.getElementById("estado_inicial").value
+            };
+
+            try {
+                const resposta = await fetch("/api/itens", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(item)
+                });
+
+                let dados = {};
+                try {
+                    dados = await resposta.json();
+                } catch (_) {}
+
+                if (!resposta.ok) {
+                    showToast(dados.error || "Erro ao cadastrar ferramenta.", "error");
+                    return;
+                }
+
+                form.reset();
+                showToast("Ferramenta cadastrada com sucesso.", "success");
+            } catch (_) {
+                showToast("Erro de conexão ao cadastrar ferramenta.", "error");
+            }
+        });
+
+        arquivoImportacao.addEventListener("change", () => {
+            const arquivo = arquivoImportacao.files[0];
+
+            if (!arquivo) {
+                nomeArquivoImportado.textContent = "Nenhum arquivo selecionado.";
+                return;
+            }
+
+            const nome = String(arquivo.name || "");
+            const idxExt = nome.lastIndexOf(".");
+            const extensao = idxExt >= 0 ? nome.slice(idxExt).toLowerCase() : "";
+
+            if (!extensoesImportacaoPermitidas.has(extensao)) {
+                arquivoImportacao.value = "";
+                nomeArquivoImportado.textContent = "Nenhum arquivo selecionado.";
+                showToast("Formato inválido. Use CSV, XLSX, XLS, XML ou PDF textual.", "warn");
+                return;
+            }
+
+            nomeArquivoImportado.textContent = `Arquivo selecionado: ${arquivo.name}`;
+        });
+
+        btnImportarArquivo.addEventListener("click", async () => {
+            const arquivo = arquivoImportacao.files[0];
+
+            if (!arquivo) {
+                showToast("Selecione um arquivo primeiro.", "warn");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("arquivo", arquivo);
+            btnImportarArquivo.disabled = true;
+            atualizarStatusImportacao(0, "Enviando arquivo...");
+
+            try {
+                const dados = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", "/api/importar-csv");
+
+                    xhr.upload.onprogress = (evento) => {
+                        if (!evento.lengthComputable) return;
+                        const percentual = Math.round((evento.loaded / evento.total) * 100);
+                        if (percentual < 100) {
+                            atualizarStatusImportacao(percentual, `Enviando arquivo... ${percentual}%`);
+                        } else {
+                            atualizarStatusImportacao(100, "Arquivo enviado. Processando...");
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error("Erro ao enviar arquivo para o servidor."));
+
+                    xhr.onload = () => {
+                        let resposta = {};
+                        try {
+                            resposta = JSON.parse(xhr.responseText || "{}");
+                        } catch (_) {}
+
+                        if (xhr.status < 200 || xhr.status >= 300) {
+                            const err = new Error(resposta.error || "Erro ao importar arquivo.");
+                            err.relatorio = resposta.relatorio;
+                            reject(err);
+                            return;
+                        }
+
+                        resolve(resposta);
+                    };
+
+                    xhr.send(formData);
+                });
+
+                const resumo = formatarRelatorioImportacao(dados);
+                atualizarStatusImportacao(100, resumo || `Importação concluída. Total importado: ${dados.total_importado || 0}`);
+                showToast(`Importação concluída. Importado: ${dados.total_importado || 0} | Atualizado: ${dados.total_atualizado || 0}`, "success");
+
+                arquivoImportacao.value = "";
+                nomeArquivoImportado.textContent = "Nenhum arquivo selecionado.";
+            } catch (erro) {
+                const detalhe = formatarRelatorioImportacao(erro.relatorio);
+                importacaoStatus.textContent = detalhe ? `${erro.message}\n${detalhe}` : (erro.message || "Erro ao enviar arquivo para o servidor.");
+                showToast(erro.message || "Erro ao enviar arquivo para o servidor.", "error");
+            } finally {
+                setTimeout(() => {
+                    resetarStatusImportacao();
+                }, 1000);
+            }
+        });
+
+    </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventário | UniqStock</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .inventario-acoes-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn-acao-secundaria,
+        .btn-acao-perigo {
+            min-height: 34px;
+            padding: 0 11px;
+            border-radius: 999px;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            background: #fff;
+            color: #0f172a;
+            font-size: 0.8rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn-acao-secundaria:hover,
+        .btn-acao-perigo:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-acao-secundaria:hover {
+            border-color: rgba(37, 99, 235, 0.24);
+            background: rgba(37, 99, 235, 0.06);
+        }
+
+        .btn-acao-perigo {
+            color: #b91c1c;
+            border-color: rgba(220, 38, 38, 0.16);
+            background: rgba(220, 38, 38, 0.05);
+        }
+
+        .btn-acao-perigo:hover {
+            border-color: rgba(220, 38, 38, 0.28);
+            background: rgba(220, 38, 38, 0.1);
+        }
+
+        .inventario-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.52);
+            backdrop-filter: blur(6px);
+            z-index: 1200;
+        }
+
+        .inventario-modal.ativo {
+            display: flex;
+        }
+
+        .inventario-modal-card {
+            width: min(760px, 100%);
+            max-height: 88vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 28px;
+            box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+            padding: 24px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .inventario-modal-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .inventario-modal-head h3 {
+            margin: 0;
+        }
+
+        .inventario-modal-head p {
+            margin: 8px 0 0;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .inventario-modal-close {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: #f8fafc;
+            color: #334155;
+            font-size: 1.55rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+            transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+        }
+
+        .inventario-modal-close:hover {
+            background: rgba(225, 6, 0, 0.08);
+            color: #b91c1c;
+            border-color: rgba(225, 6, 0, 0.18);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(225, 6, 0, 0.12);
+        }
+
+        .inventario-modal-close:focus-visible {
+            outline: 3px solid rgba(225, 6, 0, 0.18);
+            outline-offset: 2px;
+        }
+
+        .inventario-modal-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .inventario-modal-form .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        .inventario-modal-acoes {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .inventario-modal-acoes .btn-secundario {
+            background: #fff;
+            color: #0f172a;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            box-shadow: none;
+        }
+
+        .inventario-modal-status {
+            margin: 0;
+            min-height: 22px;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        .inventario-modal-alerta {
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(225, 6, 0, 0.08), rgba(15, 23, 42, 0.02));
+            border: 1px solid rgba(225, 6, 0, 0.12);
+            display: grid;
+            gap: 8px;
+        }
+
+        .inventario-modal-alerta strong {
+            color: #991b1b;
+        }
+
+        .inventario-modal-dados {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .inventario-modal-dado {
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: #f8fafc;
+            display: grid;
+            gap: 6px;
+        }
+
+        .inventario-modal-dado span {
+            color: #64748b;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .inventario-modal-dado strong {
+            color: #0f172a;
+            font-size: 1.05rem;
+            word-break: break-word;
+        }
+
+        @media (max-width: 760px) {
+            .inventario-modal-card {
+                padding: 18px;
+                border-radius: 22px;
+            }
+
+            .inventario-modal-form {
+                grid-template-columns: 1fr;
+            }
+
+            .inventario-modal-dados {
+                grid-template-columns: 1fr;
+            }
+
+            .inventario-modal-acoes button {
+                width: 100%;
+            }
+        }
+    </style>
+    <script src="sidebar-auth.js" defer></script>
+    <script src="topbar-user.js" defer></script>
+    <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+                <p>Sistema de Inventário</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+                <a href="index.html" class="ativo"><span class="sidebar-icon">📦</span> Inventário</a>
+                <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+                <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+                <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+                <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+            <div class="sidebar-footer">
+                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <h2>Inventário</h2>
+                <p>Consulta e gestão dos itens cadastrados</p>
+            </header>
+
+            <div class="container">
+
+                <section class="painel-lista">
+                    <h2>Itens cadastrados</h2>
+                    <div class="acoes-lista">
+                        <button type="button" id="btnImprimirLote" disabled>Imprimir etiquetas em lote</button>
+                        <button type="button" id="btnExportarSelecionados" disabled>Exportar selecionados</button>
+                        <span id="contadorSelecionados" class="texto-ajuda">0 selecionados</span>
+                        <input type="text" id="buscaItens" placeholder="Buscar por código, ferramenta, categoria..." />
+                        <select id="modoDensidade" title="Densidade da tabela">
+                            <option value="confortavel" selected>Confortável</option>
+                            <option value="compacto">Compacto</option>
+                        </select>
+                    </div>
+
+                    <div class="acoes-lista">
+                        <button type="button" class="chip-status ativo" data-status="todos">Todos</button>
+                        <button type="button" class="chip-status" data-status="zerado">Zerado</button>
+                        <button type="button" class="chip-status" data-status="baixo">Baixo</button>
+                        <button type="button" class="chip-status" data-status="ok">OK</button>
+                        <select id="filtroCategoriaRapido">
+                            <option value="">Categoria (todas)</option>
+                        </select>
+                        <select id="filtroLocalRapido">
+                            <option value="">Localização (todas)</option>
+                        </select>
+                    </div>
+                    <p id="textoFiltroEstoque" class="texto-ajuda">Estoque baixo: até 2 unidades.</p>
+
+                    <div class="tabela-wrap">
+                        <table class="tabela-inventario">
+                            <thead>
+                                <tr>
+                                    <th class="col-check"><input type="checkbox" id="selecionarTodos" title="Selecionar todos"></th>
+                                    <th class="col-codigo th-sort" data-sort="codigo">Código</th>
+                                    <th class="col-ferramenta th-sort" data-sort="ferramenta" data-resizable="true" data-column="ferramenta">Ferramenta</th>
+                                    <th class="col-categoria th-sort" data-sort="categoria" data-resizable="true" data-column="categoria">Categoria</th>
+                                    <th class="col-marca th-sort" data-sort="marca_modelo" data-resizable="true" data-column="marca_modelo">Marca / Modelo</th>
+                                    <th class="col-num th-sort" data-sort="quantidade_total">Quant. Total</th>
+                                    <th class="col-num th-sort" data-sort="estoque_atual">Estoque Atual</th>
+                                    <th class="col-status th-sort" data-sort="status">Status</th>
+                                    <th class="col-localizacao th-sort" data-sort="localizacao" data-resizable="true" data-column="localizacao">Localização</th>
+                                    <th class="col-estado th-sort" data-sort="estado_inicial" data-resizable="true" data-column="estado">Estado</th>
+                                    <th class="col-acoes-item">Ações</th>
+                                    <th class="col-etiqueta">Etiqueta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaItens"></tbody>
+                        </table>
+                    </div>
+                    <div class="paginacao-wrap">
+                        <button type="button" id="btnPaginaAnterior">Anterior</button>
+                        <span id="paginacaoInfo" class="texto-ajuda">Página 1 de 1</span>
+                        <button type="button" id="btnPaginaProxima">Próxima</button>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+    </div>
+
+    <div id="modalEditarItem" class="inventario-modal" aria-hidden="true">
+        <div class="inventario-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalEditarTitulo">
+            <div class="inventario-modal-head">
+                <div>
+                    <h3 id="modalEditarTitulo">Editar item</h3>
+                    <p>Atualize os dados do item selecionado. Apenas usuários com permissão podem salvar ou excluir.</p>
+                </div>
+                <button type="button" id="btnFecharModalEditar" class="inventario-modal-close" aria-label="Fechar">×</button>
+            </div>
+
+            <form id="formEditarItem" class="inventario-modal-form">
+                <input type="hidden" id="editarItemId">
+                <div class="form-group">
+                    <label for="editarCodigo">Código</label>
+                    <input type="text" id="editarCodigo" required>
+                </div>
+                <div class="form-group">
+                    <label for="editarFerramenta">Ferramenta</label>
+                    <input type="text" id="editarFerramenta" required>
+                </div>
+                <div class="form-group">
+                    <label for="editarCategoria">Categoria</label>
+                    <select id="editarCategoria" required>
+                        <option value="Medição">Medição</option>
+                        <option value="Alicate">Alicate</option>
+                        <option value="Chave">Chave</option>
+                        <option value="Soquete">Soquete</option>
+                        <option value="Catraca">Catraca</option>
+                        <option value="Elétrica">Elétrica</option>
+                        <option value="Acessório">Acessório</option>
+                        <option value="EPI">EPI</option>
+                        <option value="Tubulação">Tubulação</option>
+                        <option value="Refrigeração e hidráulica">Refrigeração e hidráulica</option>
+                        <option value="Insumo">Insumo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editarMarcaModelo">Marca / Modelo</label>
+                    <input type="text" id="editarMarcaModelo">
+                </div>
+                <div class="form-group">
+                    <label for="editarQuantidadeTotal">Quant. Total</label>
+                    <input type="number" id="editarQuantidadeTotal" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="editarLocalizacao">Localização</label>
+                    <select id="editarLocalizacao">
+                        <option value="">Localização</option>
+                        <option value="Ferramentaria">Ferramentaria</option>
+                        <option value="Almoxarifado">Almoxarifado</option>
+                        <option value="Equipe Elétrica">Equipe Elétrica</option>
+                        <option value="Equipe da Civil">Equipe da Civil</option>
+                        <option value="Barracão">Barracão</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editarEstado">Estado atual</label>
+                    <select id="editarEstado">
+                        <option value="">Estado atual</option>
+                        <option value="Nova">Nova</option>
+                        <option value="Boa">Boa</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Danificada">Danificada</option>
+                        <option value="Em manutenção">Em manutenção</option>
+                        <option value="Inutilizada">Inutilizada</option>
+                    </select>
+                </div>
+            </form>
+
+            <p id="modalEditarStatus" class="inventario-modal-status"></p>
+
+            <div class="inventario-modal-acoes">
+                <button type="button" id="btnCancelarModalEditar" class="btn-secundario">Cancelar</button>
+                <button type="submit" form="formEditarItem" id="btnSalvarEdicao">Salvar item</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalExcluirItem" class="inventario-modal" aria-hidden="true">
+        <div class="inventario-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalExcluirTitulo">
+            <div class="inventario-modal-head">
+                <div>
+                    <h3 id="modalExcluirTitulo">Confirmar exclusão</h3>
+                    <p>Revise os dados abaixo antes de remover o item do inventário.</p>
+                </div>
+                <button type="button" id="btnFecharModalExcluir" class="inventario-modal-close" aria-label="Fechar">×</button>
+            </div>
+
+            <div class="inventario-modal-alerta">
+                <strong>Esta ação é irreversível.</strong>
+                <span>O item será removido permanentemente do cadastro. Itens com movimentações vinculadas continuam bloqueados para exclusão.</span>
+            </div>
+
+            <div class="inventario-modal-dados">
+                <div class="inventario-modal-dado">
+                    <span>Item</span>
+                    <strong id="excluirItemFerramenta">-</strong>
+                </div>
+                <div class="inventario-modal-dado">
+                    <span>Código</span>
+                    <strong id="excluirItemCodigo">-</strong>
+                </div>
+            </div>
+
+            <p id="modalExcluirStatus" class="inventario-modal-status"></p>
+
+            <div class="inventario-modal-acoes">
+                <button type="button" id="btnCancelarModalExcluir" class="btn-secundario">Cancelar</button>
+                <button type="button" id="btnConfirmarExcluir" class="btn-acao-perigo">Excluir item</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btnImprimirLote = document.getElementById("btnImprimirLote");
+        const btnExportarSelecionados = document.getElementById("btnExportarSelecionados");
+        const contadorSelecionados = document.getElementById("contadorSelecionados");
+        const selecionarTodos = document.getElementById("selecionarTodos");
+        const buscaItens = document.getElementById("buscaItens");
+        const modoDensidade = document.getElementById("modoDensidade");
+        const chipsStatus = Array.from(document.querySelectorAll(".chip-status"));
+        const filtroCategoriaRapido = document.getElementById("filtroCategoriaRapido");
+        const filtroLocalRapido = document.getElementById("filtroLocalRapido");
+        const btnPaginaAnterior = document.getElementById("btnPaginaAnterior");
+        const btnPaginaProxima = document.getElementById("btnPaginaProxima");
+        const paginacaoInfo = document.getElementById("paginacaoInfo");
+        const textoFiltroEstoque = document.getElementById("textoFiltroEstoque");
+        const tabelaInventario = document.querySelector(".tabela-inventario");
+        const modalEditarItem = document.getElementById("modalEditarItem");
+        const formEditarItem = document.getElementById("formEditarItem");
+        const modalEditarStatus = document.getElementById("modalEditarStatus");
+        const modalExcluirItem = document.getElementById("modalExcluirItem");
+        const modalExcluirStatus = document.getElementById("modalExcluirStatus");
+        const COL_WIDTH_STORAGE_KEY = "inventario_column_widths_v1";
+        const RESIZABLE_COLUMNS = {
+            ferramenta: { cssVar: "--col-ferramenta-width", min: 180, max: 420, default: 220 },
+            categoria: { cssVar: "--col-categoria-width", min: 105, max: 240, default: 118 },
+            marca_modelo: { cssVar: "--col-marca-width", min: 150, max: 320, default: 170 },
+            localizacao: { cssVar: "--col-localizacao-width", min: 150, max: 320, default: 180 },
+            estado: { cssVar: "--col-estado-width", min: 110, max: 220, default: 140 }
+        };
+        const idsSelecionados = new Set();
+        let paginaAtual = 1;
+        const itensPorPagina = 25;
+        let sortField = "codigo";
+        let sortDir = "asc";
+        let filtroStatus = "todos";
+        let totalPaginas = 1;
+        let podeEditarItens = false;
+        let podeExcluirItens = false;
+        let estoqueBaixoLimite = 2;
+        let itemPendenteExclusao = null;
+        const CATEGORIAS_FIXAS = ["Medição", "Alicate", "Chave", "Soquete", "Catraca", "Elétrica", "Acessório", "EPI", "Tubulação", "Refrigeração e hidráulica", "Insumo"];
+        const LOCALIZACOES_FIXAS = ["Ferramentaria", "Almoxarifado", "Equipe Elétrica", "Equipe da Civil", "Barracão"];
+        const ESTADOS_FIXOS = ["Nova", "Boa", "Regular", "Danificada", "Em manutenção", "Inutilizada"];
+        async function api(url, method = "GET", body) {
+            const res = await fetch(url, {
+                method,
+                headers: body ? { "Content-Type": "application/json" } : undefined,
+                body: body ? JSON.stringify(body) : undefined
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const err = new Error(data.error || "Erro");
+                err.status = res.status;
+                throw err;
+            }
+            return data;
+        }
+
+        function showToast(mensagem, tipo = "info") {
+            const host = document.getElementById("toastHost") || (() => {
+                const el = document.createElement("div");
+                el.id = "toastHost";
+                el.className = "toast-host";
+                document.body.appendChild(el);
+                return el;
+            })();
+
+            const toast = document.createElement("div");
+            toast.className = `toast toast-${tipo}`;
+            toast.textContent = mensagem;
+            host.appendChild(toast);
+
+            setTimeout(() => toast.classList.add("show"), 10);
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 200);
+            }, 2600);
+        }
+
+
+        let itens = [];
+        function normalizarTexto(valor) {
+            return String(valor || "")
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function parseNumero(valor) {
+            const numero = Number(valor);
+            return Number.isFinite(numero) ? numero : 0;
+        }
+
+        function valorStatus(estoqueAtual) {
+            if (estoqueAtual <= 0) return "zerado";
+            if (estoqueAtual <= estoqueBaixoLimite) return "baixo";
+            return "ok";
+        }
+
+        function atualizarTextoFiltroEstoque() {
+            textoFiltroEstoque.textContent = `Estoque baixo: até ${estoqueBaixoLimite} unidade${estoqueBaixoLimite === 1 ? "" : "s"}.`;
+        }
+
+        function atualizarSelecaoUI() {
+            const total = idsSelecionados.size;
+            contadorSelecionados.textContent = `${total} selecionado${total === 1 ? "" : "s"}`;
+            btnImprimirLote.disabled = total === 0;
+            btnExportarSelecionados.disabled = total === 0;
+        }
+
+        selecionarTodos.addEventListener("change", () => {
+            const checks = document.querySelectorAll(".check-item");
+            checks.forEach((input) => {
+                input.checked = selecionarTodos.checked;
+                const linha = input.closest("tr");
+                if (linha) {
+                    linha.classList.toggle("row-selecionada", selecionarTodos.checked);
+                }
+                const id = Number(input.value);
+                if (selecionarTodos.checked) {
+                    idsSelecionados.add(id);
+                } else {
+                    idsSelecionados.delete(id);
+                }
+            });
+            atualizarSelecaoUI();
+        });
+
+        btnImprimirLote.addEventListener("click", () => {
+            if (idsSelecionados.size === 0) return;
+            const query = encodeURIComponent(Array.from(idsSelecionados).join(","));
+            window.open(`/etiquetas-lote.html?ids=${query}`, "_blank");
+        });
+
+        btnExportarSelecionados.addEventListener("click", () => {
+            if (idsSelecionados.size === 0) return;
+            const ids = encodeURIComponent(Array.from(idsSelecionados).join(","));
+            window.location.href = `/api/exportar-inventario?ids=${ids}`;
+        });
+
+        buscaItens.addEventListener("input", () => {
+            paginaAtual = 1;
+            renderItens();
+        });
+
+        function classificarStatusEstoque(estoqueAtual) {
+            if (estoqueAtual <= 0) return { texto: "Zerado", classe: "estoque-zerado" };
+            if (estoqueAtual <= estoqueBaixoLimite) return { texto: "Baixo", classe: "estoque-baixo" };
+            return { texto: "OK", classe: "estoque-ok" };
+        }
+
+        async function carregarConfiguracaoEstoque() {
+            try {
+                const dados = await api("/api/configuracoes/estoque");
+                estoqueBaixoLimite = Math.max(1, Number(dados?.estoque_baixo_limite) || 2);
+            } catch (_) {
+                estoqueBaixoLimite = 2;
+            }
+            atualizarTextoFiltroEstoque();
+        }
+
+        function atualizarCabecalhoOrdenacao() {
+            document.querySelectorAll(".th-sort").forEach((th) => {
+                const campo = th.dataset.sort;
+                th.classList.toggle("sorted-asc", campo === sortField && sortDir === "asc");
+                th.classList.toggle("sorted-desc", campo === sortField && sortDir === "desc");
+            });
+        }
+
+        function aplicarDensidade() {
+            tabelaInventario.classList.toggle("compacto", modoDensidade.value === "compacto");
+        }
+
+        function atualizarFiltrosRapidos() {
+            const categoriasEncontradas = Array.from(
+                new Set(itens.map((i) => (i.categoria || "").trim()).filter(Boolean))
+            );
+            const categoriasFixasPresentes = CATEGORIAS_FIXAS.filter((categoria) =>
+                categoriasEncontradas.includes(categoria)
+            );
+            const categoriasExtras = categoriasEncontradas
+                .filter((categoria) => !CATEGORIAS_FIXAS.includes(categoria))
+                .sort((a, b) => a.localeCompare(b, "pt-BR"));
+            const categorias = [...categoriasFixasPresentes, ...categoriasExtras];
+            const locais = Array.from(new Set(itens.map((i) => (i.localizacao || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+            const categoriaAtual = filtroCategoriaRapido.value;
+            const localAtual = filtroLocalRapido.value;
+
+            filtroCategoriaRapido.innerHTML = '<option value="">Categoria (todas)</option>';
+            filtroLocalRapido.innerHTML = '<option value="">Localização (todas)</option>';
+
+            categorias.forEach((cat) => {
+                const option = document.createElement("option");
+                option.value = cat;
+                option.textContent = cat;
+                filtroCategoriaRapido.appendChild(option);
+            });
+
+            locais.forEach((loc) => {
+                const option = document.createElement("option");
+                option.value = loc;
+                option.textContent = loc;
+                filtroLocalRapido.appendChild(option);
+            });
+
+            filtroCategoriaRapido.value = categorias.includes(categoriaAtual) ? categoriaAtual : "";
+            filtroLocalRapido.value = locais.includes(localAtual) ? localAtual : "";
+        }
+
+        function filtrarItens() {
+            const termo = normalizarTexto(buscaItens.value);
+            const categoriaRapida = normalizarTexto(filtroCategoriaRapido.value);
+            const localRapido = normalizarTexto(filtroLocalRapido.value);
+
+            return itens.filter((item) => {
+                const estoqueAtual = parseNumero(item.estoque_atual);
+                const statusAtual = valorStatus(estoqueAtual);
+
+                if (filtroStatus !== "todos" && statusAtual !== filtroStatus) return false;
+                if (categoriaRapida && normalizarTexto(item.categoria) !== categoriaRapida) return false;
+                if (localRapido && normalizarTexto(item.localizacao) !== localRapido) return false;
+
+                if (termo) {
+                    const alvo = normalizarTexto([
+                        item.codigo,
+                        item.ferramenta,
+                        item.categoria,
+                        item.marca_modelo,
+                        item.localizacao,
+                        item.estado_inicial
+                    ].join(" "));
+                    if (!alvo.includes(termo)) return false;
+                }
+
+                return true;
+            });
+        }
+
+        function ordenarItens(lista) {
+            const ordenados = [...lista];
+            ordenados.sort((a, b) => {
+                let av;
+                let bv;
+
+                if (sortField === "status") {
+                    av = valorStatus(parseNumero(a.estoque_atual));
+                    bv = valorStatus(parseNumero(b.estoque_atual));
+                    const ordemStatus = { zerado: 0, baixo: 1, ok: 2 };
+                    const diff = ordemStatus[av] - ordemStatus[bv];
+                    return sortDir === "asc" ? diff : -diff;
+                }
+
+                if (["quantidade_total", "estoque_atual"].includes(sortField)) {
+                    av = parseNumero(a[sortField]);
+                    bv = parseNumero(b[sortField]);
+                    return sortDir === "asc" ? av - bv : bv - av;
+                }
+
+                av = normalizarTexto(a[sortField]);
+                bv = normalizarTexto(b[sortField]);
+                const comp = av.localeCompare(bv, "pt-BR", { numeric: true, sensitivity: "base" });
+                return sortDir === "asc" ? comp : -comp;
+            });
+            return ordenados;
+        }
+
+        function aplicarPaginacao(lista) {
+            totalPaginas = Math.max(1, Math.ceil(lista.length / itensPorPagina));
+            if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
+            if (paginaAtual < 1) paginaAtual = 1;
+            const inicio = (paginaAtual - 1) * itensPorPagina;
+            return lista.slice(inicio, inicio + itensPorPagina);
+        }
+
+        function atualizarPaginacao(totalItens) {
+            totalPaginas = Math.max(1, Math.ceil(totalItens / itensPorPagina));
+            paginacaoInfo.textContent = `Página ${paginaAtual} de ${totalPaginas} (${totalItens} itens)`;
+            btnPaginaAnterior.disabled = paginaAtual <= 1;
+            btnPaginaProxima.disabled = paginaAtual >= totalPaginas;
+        }
+
+        function textoSeguro(valor, fallback = "") {
+            const texto = String(valor ?? fallback);
+            return texto
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function garantirCategoriaNoSelect(select, categoriaAtual) {
+            const valor = String(categoriaAtual || "").trim();
+            const valorPadrao = CATEGORIAS_FIXAS.includes(valor) ? valor : (valor || "Chave");
+            const opcaoExtra = select.querySelector("option[data-categoria-extra='true']");
+
+            if (opcaoExtra) {
+                opcaoExtra.remove();
+            }
+
+            if (valor && !CATEGORIAS_FIXAS.includes(valor)) {
+                const option = document.createElement("option");
+                option.value = valor;
+                option.textContent = `${valor} (atual)`;
+                option.dataset.categoriaExtra = "true";
+                select.appendChild(option);
+            }
+
+            select.value = valorPadrao;
+        }
+
+        function garantirOpcaoTemporaria(select, valorAtual, opcoesFixas, datasetKey) {
+            const valor = String(valorAtual || "").trim();
+            const opcaoExtra = select.querySelector(`option[data-${datasetKey}='true']`);
+
+            if (opcaoExtra) {
+                opcaoExtra.remove();
+            }
+
+            select.value = "";
+
+            if (valor && !opcoesFixas.includes(valor)) {
+                const option = document.createElement("option");
+                option.value = valor;
+                option.textContent = `${valor} (atual)`;
+                option.dataset[datasetKey] = "true";
+                select.appendChild(option);
+            }
+
+            const possuiOpcao = Array.from(select.options).some((option) => option.value === valor);
+            select.value = valor && possuiOpcao ? valor : "";
+        }
+
+        function clamp(valor, min, max) {
+            return Math.min(Math.max(valor, min), max);
+        }
+
+        function lerLargurasSalvas() {
+            try {
+                return JSON.parse(localStorage.getItem(COL_WIDTH_STORAGE_KEY) || "{}");
+            } catch (_) {
+                return {};
+            }
+        }
+
+        function salvarLargurasColunas(widths) {
+            localStorage.setItem(COL_WIDTH_STORAGE_KEY, JSON.stringify(widths));
+        }
+
+        function aplicarLargurasColunas(widths = {}) {
+            Object.entries(RESIZABLE_COLUMNS).forEach(([coluna, config]) => {
+                const largura = clamp(
+                    Number(widths[coluna] || config.default),
+                    config.min,
+                    config.max
+                );
+                tabelaInventario.style.setProperty(config.cssVar, `${largura}px`);
+            });
+        }
+
+        function inicializarResizeColunas() {
+            if (window.innerWidth <= 900) return;
+
+            document.querySelectorAll(".tabela-inventario thead th[data-resizable='true']").forEach((th) => {
+                if (th.querySelector(".col-resizer")) return;
+
+                const coluna = th.dataset.column;
+                const config = RESIZABLE_COLUMNS[coluna];
+                if (!config) return;
+
+                const handle = document.createElement("span");
+                handle.className = "col-resizer";
+                handle.setAttribute("aria-hidden", "true");
+                th.appendChild(handle);
+
+                handle.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const largurasAtuais = lerLargurasSalvas();
+                    const larguraInicial = parseInt(
+                        getComputedStyle(tabelaInventario).getPropertyValue(config.cssVar),
+                        10
+                    ) || config.default;
+                    const startX = event.clientX;
+
+                    document.body.classList.add("col-resize-active");
+
+                    function onMove(moveEvent) {
+                        const delta = moveEvent.clientX - startX;
+                        const novaLargura = clamp(larguraInicial + delta, config.min, config.max);
+                        tabelaInventario.style.setProperty(config.cssVar, `${novaLargura}px`);
+                    }
+
+                    function onUp(upEvent) {
+                        const delta = upEvent.clientX - startX;
+                        const novaLargura = clamp(larguraInicial + delta, config.min, config.max);
+                        largurasAtuais[coluna] = novaLargura;
+                        salvarLargurasColunas(largurasAtuais);
+                        tabelaInventario.style.setProperty(config.cssVar, `${novaLargura}px`);
+                        document.body.classList.remove("col-resize-active");
+                        window.removeEventListener("mousemove", onMove);
+                        window.removeEventListener("mouseup", onUp);
+                    }
+
+                    window.addEventListener("mousemove", onMove);
+                    window.addEventListener("mouseup", onUp);
+                });
+            });
+        }
+
+        function abrirModalEdicao(itemId) {
+            if (!podeEditarItens) return;
+            const item = itens.find((entry) => Number(entry.id) === Number(itemId));
+            if (!item) {
+                showToast("Item não encontrado para edição.", "warn");
+                return;
+            }
+
+            document.getElementById("editarItemId").value = item.id;
+            document.getElementById("editarCodigo").value = item.codigo || "";
+            document.getElementById("editarFerramenta").value = item.ferramenta || "";
+            garantirCategoriaNoSelect(document.getElementById("editarCategoria"), item.categoria || "");
+            document.getElementById("editarMarcaModelo").value = item.marca_modelo || "";
+            document.getElementById("editarQuantidadeTotal").value = item.quantidade_total ?? 0;
+            garantirOpcaoTemporaria(
+                document.getElementById("editarLocalizacao"),
+                item.localizacao || "",
+                LOCALIZACOES_FIXAS,
+                "localizacaoExtra"
+            );
+            garantirOpcaoTemporaria(
+                document.getElementById("editarEstado"),
+                item.estado_inicial || "",
+                ESTADOS_FIXOS,
+                "estadoExtra"
+            );
+            modalEditarStatus.textContent = "";
+            modalEditarItem.classList.add("ativo");
+            modalEditarItem.setAttribute("aria-hidden", "false");
+        }
+
+        function fecharModalEdicao() {
+            modalEditarItem.classList.remove("ativo");
+            modalEditarItem.setAttribute("aria-hidden", "true");
+            formEditarItem.reset();
+            modalEditarStatus.textContent = "";
+        }
+
+        function abrirModalExcluir(itemId) {
+            if (!podeExcluirItens) return;
+
+            const item = itens.find((entry) => Number(entry.id) === Number(itemId));
+            if (!item) return;
+
+            itemPendenteExclusao = item;
+            document.getElementById("excluirItemFerramenta").textContent = item.ferramenta || "-";
+            document.getElementById("excluirItemCodigo").textContent = item.codigo || "-";
+            modalExcluirStatus.textContent = "";
+            modalExcluirItem.classList.add("ativo");
+            modalExcluirItem.setAttribute("aria-hidden", "false");
+        }
+
+        function fecharModalExcluir() {
+            modalExcluirItem.classList.remove("ativo");
+            modalExcluirItem.setAttribute("aria-hidden", "true");
+            modalExcluirStatus.textContent = "";
+            itemPendenteExclusao = null;
+        }
+
+        async function excluirItem(itemId) {
+            if (!podeExcluirItens) {
+                showToast("Seu usuário não tem permissão para excluir itens.", "warn");
+                return;
+            }
+
+            const item = itens.find((entry) => Number(entry.id) === Number(itemId));
+            if (!item) return;
+
+            try {
+                await api(`/api/itens/${itemId}`, "DELETE");
+                idsSelecionados.delete(Number(itemId));
+                showToast("Item excluído com sucesso.", "success");
+                await carregarItens();
+                fecharModalExcluir();
+            } catch (e) {
+                modalExcluirStatus.textContent = e.message || "Erro ao excluir item.";
+            }
+        }
+
+        function renderItens() {
+            const lista = document.getElementById("listaItens");
+            lista.innerHTML = "";
+            const itensFiltrados = filtrarItens();
+            const itensOrdenados = ordenarItens(itensFiltrados);
+            const itensPagina = aplicarPaginacao(itensOrdenados);
+
+            itensPagina.forEach((item) => {
+                const itemId = Number(item.id);
+                if (!Number.isFinite(itemId)) return;
+
+                const tr = document.createElement("tr");
+                const isSelecionado = idsSelecionados.has(itemId);
+                const checked = isSelecionado ? "checked" : "";
+                tr.classList.toggle("row-selecionada", isSelecionado);
+                const estoqueAtual = parseNumero(item.estoque_atual);
+                const quantidadeTotal = parseNumero(item.quantidade_total);
+                const statusEstoque = classificarStatusEstoque(estoqueAtual);
+                const codigoSeguro = textoSeguro(item.codigo || "");
+                const ferramentaSegura = textoSeguro(item.ferramenta || "");
+                const categoriaSegura = textoSeguro(item.categoria || "");
+                const marcaSegura = textoSeguro(item.marca_modelo || "");
+                const localSegura = textoSeguro(item.localizacao || "");
+                const estadoSeguro = textoSeguro(item.estado_inicial || "");
+                const tituloFerramenta = textoSeguro(item.ferramenta || "");
+                const tituloCategoria = textoSeguro(item.categoria || "");
+                const tituloMarca = textoSeguro(item.marca_modelo || "");
+                const tituloLocal = textoSeguro(item.localizacao || "");
+                const tituloEstado = textoSeguro(item.estado_inicial || "");
+
+                tr.innerHTML = `
+                    <td class="col-check"><input type="checkbox" class="check-item" value="${itemId}" ${checked}></td>
+                    <td class="col-codigo" data-label="Código">${codigoSeguro}</td>
+                    <td class="col-ferramenta cell-truncate" data-label="Ferramenta" title="${tituloFerramenta}">${ferramentaSegura}</td>
+                    <td class="col-categoria" data-label="Categoria" title="${tituloCategoria}">
+                        <span class="cell-two-lines">${categoriaSegura}</span>
+                    </td>
+                    <td class="col-marca cell-truncate" data-label="Marca / Modelo" title="${tituloMarca}">${marcaSegura}</td>
+                    <td class="col-num" data-label="Quant. Total">${quantidadeTotal}</td>
+                    <td class="col-num" data-label="Estoque Atual">${estoqueAtual}</td>
+                    <td class="col-status" data-label="Status"><span class="estoque-status ${statusEstoque.classe}">${statusEstoque.texto}</span></td>
+                    <td class="col-localizacao cell-truncate" data-label="Localização" title="${tituloLocal}">${localSegura}</td>
+                    <td class="col-estado cell-truncate" data-label="Estado" title="${tituloEstado}">${estadoSeguro}</td>
+                    <td class="col-acoes-item" data-label="Ações">
+                        ${(podeEditarItens || podeExcluirItens) ? `
+                        <div class="inventario-acoes-item">
+                            ${podeEditarItens ? `<button type="button" class="btn-acao-secundaria" onclick="abrirModalEdicao(${itemId})">Editar</button>` : ""}
+                            ${podeExcluirItens ? `<button type="button" class="btn-acao-perigo" onclick="abrirModalExcluir(${itemId})">Excluir</button>` : ""}
+                          </div>` : '<span class="texto-ajuda">Sem acesso</span>'}
+                      </td>
+                    <td class="col-etiqueta" data-label="Etiqueta"><button type="button" class="btn-acao" title="Ver etiqueta" onclick="visualizarEtiqueta(${itemId})"><span class="btn-icon">🏷️</span><span class="btn-text">Ver Etiqueta</span></button></td>
+                `;
+
+                lista.appendChild(tr);
+            });
+
+            document.querySelectorAll(".check-item").forEach((input) => {
+                input.addEventListener("change", () => {
+                    const id = Number(input.value);
+                    const linha = input.closest("tr");
+                    if (input.checked) {
+                        idsSelecionados.add(id);
+                    } else {
+                        idsSelecionados.delete(id);
+                    }
+                    if (linha) {
+                        linha.classList.toggle("row-selecionada", input.checked);
+                    }
+
+                    const checks = document.querySelectorAll(".check-item");
+                    const marcados = document.querySelectorAll(".check-item:checked");
+                    selecionarTodos.checked = checks.length > 0 && checks.length === marcados.length;
+                    atualizarSelecaoUI();
+                });
+            });
+
+            const checks = document.querySelectorAll(".check-item");
+            const marcados = document.querySelectorAll(".check-item:checked");
+            selecionarTodos.checked = checks.length > 0 && checks.length === marcados.length;
+            atualizarSelecaoUI();
+            atualizarPaginacao(itensFiltrados.length);
+            atualizarCabecalhoOrdenacao();
+            aplicarDensidade();
+        }
+
+        async function carregarItens() {
+            itens = await api("/api/itens");
+            atualizarFiltrosRapidos();
+            renderItens();
+        }
+
+        async function carregarPermissoesUsuario() {
+            try {
+                const dados = await api("/api/minhas-permissoes");
+                podeEditarItens = Boolean(dados?.perfil === "admin" || dados?.permissoes?.editar_itens === 1);
+                podeExcluirItens = Boolean(dados?.perfil === "admin" || dados?.permissoes?.excluir_itens === 1);
+            } catch (_) {
+                podeEditarItens = false;
+                podeExcluirItens = false;
+            }
+        }
+
+        function visualizarEtiqueta(id) {
+            window.open(`etiquetas.html?id=${id}`, "_blank");
+        }
+
+        formEditarItem.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const id = Number(document.getElementById("editarItemId").value);
+            modalEditarStatus.textContent = "Salvando alterações...";
+
+            try {
+                await api(`/api/itens/${id}`, "PUT", {
+                    codigo: document.getElementById("editarCodigo").value,
+                    ferramenta: document.getElementById("editarFerramenta").value,
+                    categoria: document.getElementById("editarCategoria").value,
+                    marca_modelo: document.getElementById("editarMarcaModelo").value,
+                    quantidade_total: document.getElementById("editarQuantidadeTotal").value,
+                    localizacao: document.getElementById("editarLocalizacao").value,
+                    estado_inicial: document.getElementById("editarEstado").value
+                });
+
+                showToast("Item atualizado com sucesso.", "success");
+                fecharModalEdicao();
+                await carregarItens();
+            } catch (e) {
+                modalEditarStatus.textContent = e.message || "Erro ao salvar item.";
+            }
+        });
+
+        document.getElementById("btnFecharModalEditar").addEventListener("click", fecharModalEdicao);
+        document.getElementById("btnCancelarModalEditar").addEventListener("click", fecharModalEdicao);
+        modalEditarItem.addEventListener("click", (event) => {
+            if (event.target === modalEditarItem) {
+                fecharModalEdicao();
+            }
+        });
+        document.getElementById("btnFecharModalExcluir").addEventListener("click", fecharModalExcluir);
+        document.getElementById("btnCancelarModalExcluir").addEventListener("click", fecharModalExcluir);
+        document.getElementById("btnConfirmarExcluir").addEventListener("click", async () => {
+            if (!itemPendenteExclusao) return;
+            modalExcluirStatus.textContent = "Excluindo item...";
+            await excluirItem(itemPendenteExclusao.id);
+        });
+        modalExcluirItem.addEventListener("click", (event) => {
+            if (event.target === modalExcluirItem) {
+                fecharModalExcluir();
+            }
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && modalEditarItem.classList.contains("ativo")) {
+                fecharModalEdicao();
+            }
+            if (event.key === "Escape" && modalExcluirItem.classList.contains("ativo")) {
+                fecharModalExcluir();
+            }
+        });
+
+        document.querySelectorAll(".th-sort").forEach((th) => {
+            th.addEventListener("click", () => {
+                const campo = th.dataset.sort;
+                if (sortField === campo) {
+                    sortDir = sortDir === "asc" ? "desc" : "asc";
+                } else {
+                    sortField = campo;
+                    sortDir = "asc";
+                }
+                paginaAtual = 1;
+                renderItens();
+            });
+        });
+
+        chipsStatus.forEach((chip) => {
+            chip.addEventListener("click", () => {
+                filtroStatus = chip.dataset.status;
+                chipsStatus.forEach((c) => c.classList.remove("ativo"));
+                chip.classList.add("ativo");
+                paginaAtual = 1;
+                renderItens();
+            });
+        });
+
+        [filtroCategoriaRapido, filtroLocalRapido].forEach((select) => {
+            select.addEventListener("change", () => {
+                paginaAtual = 1;
+                renderItens();
+            });
+        });
+
+        modoDensidade.addEventListener("change", () => {
+            aplicarDensidade();
+        });
+
+        btnPaginaAnterior.addEventListener("click", () => {
+            if (paginaAtual <= 1) return;
+            paginaAtual -= 1;
+            renderItens();
+        });
+
+        btnPaginaProxima.addEventListener("click", () => {
+            if (paginaAtual >= totalPaginas) return;
+            paginaAtual += 1;
+            renderItens();
+        });
+
+        window.abrirModalEdicao = abrirModalEdicao;
+        window.abrirModalExcluir = abrirModalExcluir;
+        window.excluirItem = excluirItem;
+
+        (async () => {
+            aplicarLargurasColunas(lerLargurasSalvas());
+            inicializarResizeColunas();
+            await carregarPermissoesUsuario();
+            await carregarConfiguracaoEstoque();
+            await carregarItens();
+        })();
+    </script>
+</body>
+
+</html>

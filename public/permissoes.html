@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permissões | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .permissoes-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .permissoes-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 28px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+      padding: 28px;
+    }
+
+    .permissoes-card h2,
+    .permissoes-card h3 {
+      margin: 0;
+    }
+
+    .permissoes-copy {
+      margin: 10px 0 0;
+      color: #64748b;
+      line-height: 1.55;
+    }
+
+    .permissoes-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .permissoes-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .permissoes-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.06);
+      color: #475569;
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .permissoes-badge.admin {
+      background: rgba(220, 38, 38, 0.12);
+      color: #b91c1c;
+    }
+
+    .permissoes-badge.operador {
+      background: rgba(37, 99, 235, 0.12);
+      color: #1d4ed8;
+    }
+
+    .permissoes-matrix-shell {
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 24px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .permissoes-group {
+      border-top: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .permissoes-group:first-child {
+      border-top: none;
+    }
+
+    .permissoes-group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .permissoes-group-head strong {
+      font-size: 0.9rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #0f172a;
+    }
+
+    .permissoes-group-head span {
+      color: #64748b;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .perm-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 170px;
+      gap: 18px;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #eef2f7;
+    }
+
+    .perm-item:last-child {
+      border-bottom: none;
+    }
+
+    .perm-label {
+      display: grid;
+      gap: 4px;
+    }
+
+    .perm-label strong {
+      color: #0f172a;
+      font-size: 1rem;
+    }
+
+    .perm-label span {
+      color: #64748b;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .perm-item select,
+    .permissoes-side select {
+      min-height: 52px;
+      border-radius: 18px;
+      border: 1px solid #d9dee7;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      padding: 0 16px;
+      font-size: 0.98rem;
+      color: #0f172a;
+    }
+
+    .perm-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-width: 164px;
+      margin-left: auto;
+    }
+
+    .perm-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .perm-toggle-ui {
+      position: relative;
+      width: 68px;
+      height: 30px;
+      flex: 0 0 68px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      overflow: hidden;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .perm-toggle-ui::before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.14);
+      transform: translateX(0);
+      transition: transform 0.2s ease;
+    }
+
+    .perm-toggle-text {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      min-width: 84px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.06);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #64748b;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+
+    .perm-toggle input:checked + .perm-toggle-ui {
+      background: rgba(34, 197, 94, 0.18);
+      border-color: rgba(22, 163, 74, 0.22);
+    }
+
+    .perm-toggle input:checked + .perm-toggle-ui::before {
+      transform: translateX(38px);
+    }
+
+    .perm-toggle input:checked + .perm-toggle-ui + .perm-toggle-text {
+      color: #166534;
+      background: rgba(34, 197, 94, 0.14);
+    }
+
+    .permissoes-side {
+      position: sticky;
+      top: 96px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .permissoes-side-panel {
+      display: grid;
+      gap: 18px;
+    }
+
+    .permissoes-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .permissoes-field label {
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #475569;
+    }
+
+    .permissoes-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .permissoes-stat {
+      padding: 16px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+      border: 1px solid rgba(15, 23, 42, 0.07);
+    }
+
+    .permissoes-stat strong {
+      display: block;
+      color: #0f172a;
+      font-size: 1.45rem;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .permissoes-stat span {
+      color: #64748b;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .permissoes-user-card {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(220, 38, 38, 0.06), rgba(15, 23, 42, 0.03));
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .permissoes-user-card strong {
+      color: #0f172a;
+      font-size: 1.05rem;
+    }
+
+    .permissoes-user-card p {
+      margin: 0;
+      color: #64748b;
+      line-height: 1.45;
+    }
+
+    .permissoes-actions {
+      display: grid;
+      gap: 12px;
+    }
+
+    .permissoes-actions button {
+      width: 100%;
+      min-height: 50px;
+      border-radius: 18px;
+    }
+
+    #btnSalvar {
+      background: #111827;
+      box-shadow: none;
+    }
+
+    #btnSalvar:hover {
+      background: #0f172a;
+      transform: translateY(-1px);
+    }
+
+    .permissoes-actions .btn-secundario {
+      background: #16a34a;
+      box-shadow: none;
+    }
+
+    .permissoes-actions .btn-secundario:hover {
+      background: #15803d;
+      transform: translateY(-1px);
+    }
+
+    .permissoes-actions .btn-terciario {
+      background: #e10600;
+      color: #ffffff;
+      border: 1px solid #e10600;
+      box-shadow: none;
+    }
+
+    .permissoes-actions .btn-terciario:hover {
+      background: #c70500;
+    }
+
+    #mensagemPerms {
+      margin: 0;
+      color: #475569;
+      font-weight: 700;
+      min-height: 22px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid transparent;
+    }
+
+    #mensagemPerms.sucesso {
+      color: #166534;
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    #mensagemPerms.erro {
+      color: #b91c1c;
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.18);
+    }
+
+    #mensagemPerms.info {
+      color: #334155;
+      background: rgba(148, 163, 184, 0.12);
+      border-color: rgba(148, 163, 184, 0.18);
+    }
+
+    @media (max-width: 1080px) {
+      .permissoes-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .permissoes-side {
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .permissoes-card {
+        padding: 20px;
+        border-radius: 22px;
+      }
+
+      .perm-item {
+        grid-template-columns: 1fr;
+      }
+
+      .permissoes-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html" class="ativo"><span class="sidebar-icon">🛡️</span> Permissões</a>
+              <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+    <main class="main-content">
+      <header class="page-header">
+        <h2>Permissões</h2>
+        <p>Controle de acesso por usuário e função</p>
+      </header>
+      <div class="container permissoes-layout">
+        <section class="permissoes-card">
+          <div class="permissoes-header">
+            <div>
+              <h2>Matriz de permissões</h2>
+              <p class="permissoes-copy">Compare acessos por área do sistema e ajuste as liberações com menos rolagem e mais clareza operacional.</p>
+            </div>
+            <span id="perfilBadge" class="permissoes-badge">Sem usuário</span>
+          </div>
+
+          <div id="permsForm" class="permissoes-matrix-shell">
+            <div class="permissoes-group">
+              <div class="permissoes-group-head">
+                <strong>Navegação</strong>
+                <span>Acesso às telas principais</span>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Ver Painel</strong>
+                  <span>Permite acessar o resumo geral e indicadores do sistema.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="ver_dashboard">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Ver Inventário</strong>
+                  <span>Libera a visualização da listagem completa de itens cadastrados.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="ver_inventario">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Ver Etiquetas</strong>
+                  <span>Autoriza acessar a área de etiquetas e impressão dos identificadores.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="ver_etiquetas">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Usar Scanner</strong>
+                  <span>Habilita a leitura por câmera e busca de itens por QR Code.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="usar_scanner">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Ver Movimentações</strong>
+                  <span>Mostra o histórico de entradas e saídas registradas.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="ver_movimentacoes">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permissoes-group">
+              <div class="permissoes-group-head">
+                <strong>Operações</strong>
+                <span>Ações que alteram dados do estoque</span>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Criar Itens</strong>
+                  <span>Permite cadastrar novos itens no inventário.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="criar_itens">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Editar Itens</strong>
+                  <span>Permite alterar os dados de itens já cadastrados.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="editar_itens">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Excluir Itens</strong>
+                  <span>Permite remover itens do inventário quando não houver movimentações vinculadas.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="excluir_itens">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Registrar Movimentação</strong>
+                  <span>Autoriza lançar entradas e saídas no inventário.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="registrar_movimentacao">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Importar/Exportar</strong>
+                  <span>Libera uso de planilhas, importações em lote e exportação dos dados.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="importar_exportar">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permissoes-group">
+              <div class="permissoes-group-head">
+                <strong>Administração</strong>
+                <span>Controles sensíveis do sistema</span>
+              </div>
+              <div class="perm-item">
+                <div class="perm-label">
+                  <strong>Gerenciar Usuários</strong>
+                  <span>Permite administrar contas, perfis e permissões de outros usuários.</span>
+                </div>
+                <label class="perm-toggle">
+                  <input type="checkbox" id="gerenciar_usuarios">
+                  <span class="perm-toggle-ui"></span>
+                  <span class="perm-toggle-text">Negado</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="permissoes-side">
+          <section class="permissoes-card permissoes-side-panel">
+            <div>
+              <h3>Painel do usuário</h3>
+              <p class="permissoes-copy">Selecione um usuário, revise o perfil atual e aplique as permissões sem sair da tela.</p>
+            </div>
+
+            <div class="permissoes-field">
+              <label for="selectUsuario">Usuário</label>
+              <select id="selectUsuario"></select>
+            </div>
+
+            <div class="permissoes-user-card">
+              <div>
+                <strong id="usuarioSelecionadoNome">Nenhum usuário selecionado</strong>
+                <p id="usuarioSelecionadoPerfilTexto">Escolha um usuário para carregar o perfil e as permissões.</p>
+              </div>
+              <span id="usuarioSelecionadoPerfil" class="permissoes-badge">Sem perfil</span>
+            </div>
+
+            <div class="permissoes-stats">
+              <div class="permissoes-stat">
+                <strong id="statPermitidas">0</strong>
+                <span>Permitidas</span>
+              </div>
+              <div class="permissoes-stat">
+                <strong id="statNegadas">0</strong>
+                <span>Bloqueadas</span>
+              </div>
+            </div>
+
+              <div class="permissoes-actions">
+              <button type="button" id="btnSalvar">Salvar alterações</button>
+                <button type="button" id="btnPermitirTudo" class="btn-secundario">Permitir tudo</button>
+                <button type="button" id="btnBloquearTudo" class="btn-terciario">Bloquear tudo</button>
+              </div>
+            <p id="mensagemPerms"></p>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script>
+    const CAMPOS_PERMISSAO = [
+      "ver_dashboard", "ver_inventario", "criar_itens", "editar_itens", "excluir_itens", "ver_etiquetas",
+      "usar_scanner", "ver_movimentacoes", "registrar_movimentacao", "importar_exportar", "gerenciar_usuarios"
+    ];
+    const USUARIO_PERMISSOES_STORAGE_KEY = "uniqstock_permissoes_usuario_selecionado";
+
+    async function api(url, method = "GET", body) {
+      const res = await fetch(url, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    async function carregarUsuarios() {
+      const usuarios = await api("/api/usuarios");
+      const sel = document.getElementById("selectUsuario");
+      sel.innerHTML = '<option value="">Selecione</option>';
+      usuarios.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.id;
+        opt.dataset.usuario = u.usuario;
+        opt.dataset.perfil = u.perfil;
+        opt.textContent = `${u.usuario} (${u.perfil})`;
+        sel.appendChild(opt);
+      });
+      restaurarUsuarioSelecionado();
+    }
+
+    async function carregarPermissoes(id) {
+      const p = await api(`/api/usuarios/${id}/permissoes`);
+      Object.keys(p).forEach(k => {
+        const el = document.getElementById(k);
+        if (el && el.type === "checkbox") {
+          el.checked = Number(p[k]) === 1;
+        }
+      });      
+      atualizarResumoPermissoes();
+    }
+
+    async function salvarPermissoes(id) {
+      const body = {};
+      CAMPOS_PERMISSAO.forEach(k => {
+        const el = document.getElementById(k);
+        if (el) body[k] = Boolean(el.checked);
+      });
+      await api(`/api/usuarios/${id}/permissoes`, "PUT", body);
+    }
+
+    function atualizarPainelUsuario() {
+      const sel = document.getElementById("selectUsuario");
+      const opt = sel.options[sel.selectedIndex];
+      const nome = document.getElementById("usuarioSelecionadoNome");
+      const perfilTexto = document.getElementById("usuarioSelecionadoPerfilTexto");
+      const perfilBadge = document.getElementById("usuarioSelecionadoPerfil");
+      const cabecalhoBadge = document.getElementById("perfilBadge");
+
+      if (!opt || !opt.value) {
+        nome.textContent = "Nenhum usuário selecionado";
+        perfilTexto.textContent = "Escolha um usuário para carregar o perfil e as permissões.";
+        perfilBadge.textContent = "Sem perfil";
+        perfilBadge.className = "permissoes-badge";
+        cabecalhoBadge.textContent = "Sem usuário";
+        cabecalhoBadge.className = "permissoes-badge";
+        return;
+      }
+
+      const usuario = opt.dataset.usuario || opt.textContent || "Usuário";
+      const perfil = String(opt.dataset.perfil || "").toLowerCase();
+      const perfilRotulo = perfil === "admin" ? "Administrador" : "Operador";
+      const classe = perfil === "admin" ? "admin" : "operador";
+
+      nome.textContent = usuario;
+      perfilTexto.textContent = `Perfil atual: ${perfilRotulo}. Ajuste os acessos e salve para aplicar as alterações.`;
+      perfilBadge.textContent = perfilRotulo;
+      perfilBadge.className = `permissoes-badge ${classe}`;
+      cabecalhoBadge.textContent = perfilRotulo;
+      cabecalhoBadge.className = `permissoes-badge ${classe}`;
+    }
+
+    function atualizarResumoPermissoes() {
+      let permitidas = 0;
+      let negadas = 0;
+
+      CAMPOS_PERMISSAO.forEach((k) => {
+        const el = document.getElementById(k);
+        if (!el) return;
+        const label = el.parentElement?.querySelector(".perm-toggle-text");
+        if (label) {
+          label.textContent = el.checked ? "Permitido" : "Negado";
+        }
+        if (el.checked) permitidas++;
+        else negadas++;
+      });
+
+      document.getElementById("statPermitidas").textContent = String(permitidas);
+      document.getElementById("statNegadas").textContent = String(negadas);
+    }
+
+    function aplicarTodasPermissoes(valor) {
+      CAMPOS_PERMISSAO.forEach((k) => {
+        const el = document.getElementById(k);
+        if (el) el.checked = valor === "1";
+      });
+      atualizarResumoPermissoes();
+    }
+
+    function definirMensagemPermissoes(texto, tipo = "info") {
+      const msg = document.getElementById("mensagemPerms");
+      msg.textContent = texto;
+      msg.className = tipo ? tipo : "";
+    }
+
+    function salvarUsuarioSelecionado(id) {
+      if (!id) {
+        localStorage.removeItem(USUARIO_PERMISSOES_STORAGE_KEY);
+        return;
+      }
+      localStorage.setItem(USUARIO_PERMISSOES_STORAGE_KEY, String(id));
+    }
+
+    async function restaurarUsuarioSelecionado() {
+      const idSalvo = localStorage.getItem(USUARIO_PERMISSOES_STORAGE_KEY);
+      if (!idSalvo) return;
+
+      const sel = document.getElementById("selectUsuario");
+      const existeOpcao = Array.from(sel.options).some((opt) => opt.value === idSalvo);
+      if (!existeOpcao) {
+        localStorage.removeItem(USUARIO_PERMISSOES_STORAGE_KEY);
+        return;
+      }
+
+      sel.value = idSalvo;
+      atualizarPainelUsuario();
+
+      try {
+        definirMensagemPermissoes("Carregando permissões...", "info");
+        await carregarPermissoes(idSalvo);
+        definirMensagemPermissoes("Permissões carregadas.", "sucesso");
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        definirMensagemPermissoes(e2.message || "Erro ao carregar permissões.", "erro");
+      }
+    }
+
+    document.getElementById("selectUsuario").addEventListener("change", async (e) => {
+      const id = e.target.value;
+      salvarUsuarioSelecionado(id);
+      atualizarPainelUsuario();
+      if (!id) {
+        atualizarResumoPermissoes();
+        definirMensagemPermissoes("Selecione um usuário para editar as permissões.", "info");
+        return;
+      }
+      try {
+        definirMensagemPermissoes("Carregando permissões...", "info");
+        await carregarPermissoes(id);
+        definirMensagemPermissoes("Permissões carregadas.", "sucesso");
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        definirMensagemPermissoes(e2.message || "Erro ao carregar permissões.", "erro");
+      }
+    });
+
+    document.getElementById("btnSalvar").addEventListener("click", async (event) => {
+      event.preventDefault();
+      const id = document.getElementById("selectUsuario").value;
+      const btnSalvar = document.getElementById("btnSalvar");
+      if (!id) {
+        definirMensagemPermissoes("Selecione um usuário antes de salvar.", "erro");
+        return;
+      }
+      definirMensagemPermissoes("Salvando alterações...", "info");
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = "Salvando...";
+      try {
+        await salvarPermissoes(id);
+        await carregarPermissoes(id);
+        definirMensagemPermissoes("Permissões atualizadas com sucesso.", "sucesso");
+        btnSalvar.textContent = "Salvo";
+      } catch (e) {
+        if (e.status === 401) return window.location.href = "/login.html";
+        if (e.status === 403) return window.location.href = "/acesso-negado.html";
+        definirMensagemPermissoes(e.message || "Erro ao salvar.", "erro");
+      } finally {
+        btnSalvar.disabled = false;
+        setTimeout(() => {
+          btnSalvar.textContent = "Salvar alterações";
+        }, 900);
+      }
+    });
+
+    document.getElementById("btnPermitirTudo").addEventListener("click", () => {
+      aplicarTodasPermissoes("1");
+    });
+
+    document.getElementById("btnBloquearTudo").addEventListener("click", () => {
+      aplicarTodasPermissoes("0");
+    });
+
+    CAMPOS_PERMISSAO.forEach((k) => {
+      const el = document.getElementById(k);
+      if (el) {
+        el.addEventListener("change", atualizarResumoPermissoes);
+      }
+    });
+
+    carregarUsuarios().catch((e) => {
+      if (e?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+      } else {
+        window.location.href = "/login.html";
+      }
+    });
+    atualizarPainelUsuario();
+    atualizarResumoPermissoes();
+    definirMensagemPermissoes("Selecione um usuário para editar as permissões.", "info");
+  </script>
+</body>
+
+</html>
+
+
+
+

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurações | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html" class="ativo"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <h2>Configurações</h2>
+        <p>Ajustes gerais e rotinas de backup</p>
+      </header>
+
+      <div class="container">
+        <div class="config-cards">
+          <section class="painel-form config-card">
+            <h2>Rotina de backup diário</h2>
+            <form id="formBackup" class="config-backup-form">
+              <div class="form-group">
+                <label for="backupHabilitado">Ativar backup automático</label>
+                <select id="backupHabilitado">
+                  <option value="1">Ativado</option>
+                  <option value="0">Desativado</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="backupHorario">Horário do backup diário</label>
+                <input type="time" id="backupHorario" required>
+              </div>
+
+              <div class="form-group config-span-2">
+                <label for="backupRetencao">Reter backups por (dias)</label>
+                <input type="number" id="backupRetencao" min="1" max="365" required>
+              </div>
+              <div class="form-group config-span-2">
+                <label for="estoqueBaixoLimite">Limite de estoque baixo</label>
+                <input type="number" id="estoqueBaixoLimite" min="1" max="999" required>
+                <small class="texto-ajuda">Itens com estoque menor ou igual a este valor serão marcados como "Baixo".</small>
+              </div>
+
+              <div class="config-actions config-span-2">
+                <button type="submit">Salvar configurações</button>
+                <button type="button" id="btnExecutarBackup">Executar backup agora</button>
+              </div>
+            </form>
+            <p id="statusBackup" class="texto-ajuda config-status"></p>
+          </section>
+
+          <section class="painel-form config-card">
+            <h2>Atualização do sistema</h2>
+            <div class="form-group">
+              <label>Versão instalada</label>
+              <input type="text" id="versaoAtualApp" value="Carregando..." readonly>
+            </div>
+            <div class="config-actions">
+              <button type="button" id="btnVerificarAtualizacao">Procurar atualização</button>
+            </div>
+            <p id="statusAtualizacao" class="texto-ajuda config-status"></p>
+            <p id="infoAtualizacao" class="texto-ajuda"></p>
+            <p>
+              <a id="linkAtualizacao" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+                Baixar nova versão
+              </a>
+            </p>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let versaoAtual = "0.1.0-beta.1";
+
+    async function api(url, method = "GET", body) {
+      const res = await fetch(url, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    async function carregarVersaoAtual() {
+      try {
+        const dados = await api("/api/app/version");
+        versaoAtual = dados.version || versaoAtual;
+      } catch (_) {}
+      document.getElementById("versaoAtualApp").value = versaoAtual;
+    }
+
+    function formatarBytes(bytes) {
+      const valor = Number(bytes);
+      if (!Number.isFinite(valor) || valor <= 0) return "0 B";
+      if (valor < 1024) return `${valor} B`;
+      if (valor < 1024 * 1024) return `${(valor / 1024).toFixed(1)} KB`;
+      if (valor < 1024 * 1024 * 1024) return `${(valor / (1024 * 1024)).toFixed(1)} MB`;
+      return `${(valor / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    }
+
+    async function verificarAtualizacao() {
+      const status = document.getElementById("statusAtualizacao");
+      const info = document.getElementById("infoAtualizacao");
+      const link = document.getElementById("linkAtualizacao");
+      const btn = document.getElementById("btnVerificarAtualizacao");
+
+      status.textContent = "Verificando atualizações...";
+      info.textContent = "";
+      link.style.display = "none";
+      link.removeAttribute("href");
+      btn.disabled = true;
+
+      try {
+        const dados = await api(`/api/app/update-check?current=${encodeURIComponent(versaoAtual)}`);
+        if (!dados.latest) {
+          status.textContent = "Nenhuma versão publicada foi encontrada.";
+          return;
+        }
+
+        if (dados.update_available) {
+          status.textContent = `Nova versão disponível: ${dados.latest.version}`;
+          const detalhes = [];
+          if (dados.latest.notes) detalhes.push(`Notas: ${dados.latest.notes}`);
+          if (dados.latest.sha256) detalhes.push(`SHA-256: ${dados.latest.sha256}`);
+          if (dados.latest.provider) detalhes.push(`Canal: ${dados.latest.provider}`);
+
+          if (dados.latest.download_blocked_reason) {
+            detalhes.push(`Download bloqueado: ${dados.latest.download_blocked_reason}`);
+            link.style.display = "none";
+            link.removeAttribute("href");
+          } else if (dados.latest.download_url) {
+            link.href = dados.latest.download_url;
+            link.textContent = "Baixar atualização verificada";
+            link.style.display = "inline";
+          }
+
+          info.textContent = detalhes.join(" | ");
+          return;
+        }
+
+        status.textContent = "Seu sistema já está atualizado.";
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao verificar atualização.";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function carregarConfiguracoes() {
+      const dados = await api("/api/configuracoes/backup");
+      const dadosEstoque = await api("/api/configuracoes/estoque");
+      document.getElementById("backupHabilitado").value = dados.backup_auto_habilitado ? "1" : "0";
+      document.getElementById("backupHorario").value = dados.backup_auto_horario || "02:00";
+      document.getElementById("backupRetencao").value = dados.backup_reter_dias || 15;
+      document.getElementById("estoqueBaixoLimite").value = dadosEstoque.estoque_baixo_limite || 2;
+      if (dados.ultimo_backup) {
+        document.getElementById("statusBackup").textContent =
+          `Último backup: ${dados.ultimo_backup.file_name} (${formatarBytes(dados.ultimo_backup.size_bytes)})`;
+      }
+    }
+
+    document.getElementById("formBackup").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = document.getElementById("statusBackup");
+      status.textContent = "Salvando...";
+      try {
+        await api("/api/configuracoes/backup", "PUT", {
+          backup_auto_habilitado: document.getElementById("backupHabilitado").value === "1",
+          backup_auto_horario: document.getElementById("backupHorario").value,
+          backup_reter_dias: Number(document.getElementById("backupRetencao").value || 15)
+        });
+        await api("/api/configuracoes/estoque", "PUT", {
+          estoque_baixo_limite: Number(document.getElementById("estoqueBaixoLimite").value || 2)
+        });
+        status.textContent = "Configurações salvas com sucesso.";
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao salvar configurações.";
+      }
+    });
+
+    document.getElementById("btnExecutarBackup").addEventListener("click", async () => {
+      const status = document.getElementById("statusBackup");
+      status.textContent = "Executando backup...";
+      try {
+        const dados = await api("/api/configuracoes/backup/executar", "POST");
+        if (dados.backup) {
+          status.textContent =
+            `Backup executado: ${dados.backup.file_name} (${formatarBytes(dados.backup.size_bytes)})`;
+        } else {
+          status.textContent = "Backup executado com sucesso.";
+        }
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao executar backup.";
+      }
+    });
+
+    document.getElementById("btnVerificarAtualizacao").addEventListener("click", verificarAtualizacao);
+
+    Promise.all([
+      carregarConfiguracoes(),
+      carregarVersaoAtual()
+    ]).catch((e) => {
+      if (e?.status === 401) {
+        window.location.href = "/login.html";
+      } else if (e?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+      } else {
+        document.getElementById("statusBackup").textContent = e.message || "Erro ao carregar configurações.";
+      }
+    });
+  </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ativação | UniqStock</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="login-body">
+    <main class="login-page">
+        <section class="login-card ativacao-card">
+            <div class="login-header">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20preciso%20ativar%20o%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqStock" class="brand-logo-light"></a>
+                <p>Ativação de licença</p>
+            </div>
+
+            <div id="licencaStatus" class="licenca-status">Verificando licença...</div>
+            <div class="licenca-maquina-box">
+                <p>Código desta máquina:</p>
+                <div class="licenca-maquina-linha">
+                    <code id="codigoMaquina">Carregando...</code>
+                    <button type="button" id="btnCopiarMaquina" class="btn-copiar-maquina">Copiar</button>
+                </div>
+            </div>
+
+            <form id="ativacaoForm" class="login-form">
+                <div class="form-group">
+                    <label for="chave">Chave de ativação</label>
+                    <textarea id="chave" rows="3" placeholder="Cole a chave aqui (USK1...)" required></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Ativar sistema</button>
+                <p id="ativacaoMensagem" class="login-mensagem"></p>
+            </form>
+
+            <p class="login-link">
+                Precisa de uma chave? <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20ativar%20o%20UniqStock" target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a>
+            </p>
+        </section>
+    </main>
+
+    <script>
+        const licencaStatus = document.getElementById("licencaStatus");
+        const ativacaoForm = document.getElementById("ativacaoForm");
+        const ativacaoMensagem = document.getElementById("ativacaoMensagem");
+        const campoChave = document.getElementById("chave");
+        const codigoMaquina = document.getElementById("codigoMaquina");
+        const btnCopiarMaquina = document.getElementById("btnCopiarMaquina");
+
+        function formatarStatus(status) {
+            if (!status.ativa) {
+                licencaStatus.className = "licenca-status inativa";
+                licencaStatus.textContent = "Licença inativa.";
+                codigoMaquina.textContent = status.codigo_maquina || "N/D";
+                return;
+            }
+            const exp = status.expira_em || "-";
+            const cliente = status.cliente || "-";
+            licencaStatus.className = "licenca-status ativa";
+            licencaStatus.textContent = `Licença ativa para ${cliente} (expira em ${exp})`;
+            codigoMaquina.textContent = status.codigo_maquina || "N/D";
+        }
+
+        async function carregarStatusLicenca() {
+            try {
+                const res = await fetch("/api/licenca/status");
+                const dados = await res.json();
+                if (!res.ok) throw new Error(dados.error || "Falha ao consultar licença");
+                formatarStatus(dados);
+                if (dados.ativa) {
+                    setTimeout(() => {
+                        window.location.href = "/login.html";
+                    }, 1200);
+                }
+            } catch (_) {
+                licencaStatus.className = "licenca-status inativa";
+                licencaStatus.textContent = "Não foi possível validar a licença agora.";
+                codigoMaquina.textContent = "N/D";
+            }
+        }
+
+        btnCopiarMaquina.addEventListener("click", async () => {
+            const texto = (codigoMaquina.textContent || "").trim();
+            if (!texto || texto === "N/D" || texto === "Carregando...") return;
+            try {
+                await navigator.clipboard.writeText(texto);
+                ativacaoMensagem.style.color = "#166534";
+                ativacaoMensagem.textContent = "Código da máquina copiado.";
+            } catch (_) {
+                ativacaoMensagem.textContent = "Não foi possível copiar automaticamente.";
+            }
+        });
+
+        ativacaoForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            ativacaoMensagem.textContent = "Validando chave...";
+            ativacaoMensagem.style.color = "";
+            try {
+                const chave = campoChave.value.trim();
+                const res = await fetch("/api/licenca/ativar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ chave })
+                });
+                const dados = await res.json();
+                if (!res.ok) {
+                    ativacaoMensagem.textContent = dados.error || "Falha ao ativar licença";
+                    return;
+                }
+                ativacaoMensagem.style.color = "#166534";
+                ativacaoMensagem.textContent = "Licença ativada com sucesso. Redirecionando...";
+                await carregarStatusLicenca();
+            } catch (_) {
+                ativacaoMensagem.textContent = "Erro de conexão com o servidor";
+            }
+        });
+
+        carregarStatusLicenca();
+    </script>
+</body>
+
+</html>

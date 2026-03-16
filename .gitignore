@@ -1,0 +1,12 @@
+node_modules
+backups/
+db/
+dist/
+dist-final/
+dist-novo/
+uploads/
+updates/
+runtime/
+*.db
+*.zip
+*.log
