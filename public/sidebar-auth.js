@@ -5,7 +5,7 @@
     "ferramentaria.html": "registrar_movimentacao",
     "almoxarifado.html": "ver_inventario",
     "cadastro-almoxarifado.html": "criar_itens",
-    "cadastro-ferramenta.html": "criar_editar_itens",
+    "cadastro-ferramenta.html": "criar_itens",
     "etiquetas.html": "ver_etiquetas",
     "scanner.html": "usar_scanner",
     "movimentacoes.html": "ver_movimentacoes",
@@ -35,6 +35,19 @@
     return parts[parts.length - 1];
   }
 
+  function hasPermission(permissoes, perm) {
+    const valorAtual = permissoes?.[perm];
+    if (valorAtual !== undefined && valorAtual !== null) {
+      return Number(valorAtual) === 1;
+    }
+
+    if (perm === "criar_itens" || perm === "editar_itens" || perm === "excluir_itens") {
+      return Number(permissoes?.criar_editar_itens) === 1;
+    }
+
+    return false;
+  }
+
   function setMenuVisibility(permissoes) {
     const links = document.querySelectorAll(".sidebar-nav a[href]");
     let currentHidden = false;
@@ -44,7 +57,7 @@
       const perm = permissionByPage[page];
       if (!perm) return;
 
-      const allowed = Number(permissoes?.[perm]) === 1;
+      const allowed = hasPermission(permissoes, perm);
       if (!allowed) {
         if (link.classList.contains("ativo")) currentHidden = true;
         link.style.display = "none";

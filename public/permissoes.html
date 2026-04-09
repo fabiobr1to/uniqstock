@@ -67,8 +67,20 @@
                 <option value="0">Negado</option>
               </select>
             </div>
-            <div class="perm-item"><label for="criar_editar_itens">Criar/Editar Itens</label>
-              <select id="criar_editar_itens">
+            <div class="perm-item"><label for="criar_itens">Criar Itens</label>
+              <select id="criar_itens">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="editar_itens">Editar Itens</label>
+              <select id="editar_itens">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="excluir_itens">Excluir Itens</label>
+              <select id="excluir_itens">
                 <option value="1">Permitido</option>
                 <option value="0">Negado</option>
               </select>
@@ -144,26 +156,49 @@
       });
     }
 
+    const ITEM_CRUD_KEYS = ["criar_itens", "editar_itens", "excluir_itens"];
+    const PERMISSION_KEYS = [
+      "ver_dashboard",
+      "ver_inventario",
+      ...ITEM_CRUD_KEYS,
+      "ver_etiquetas",
+      "usar_scanner",
+      "ver_movimentacoes",
+      "registrar_movimentacao",
+      "importar_exportar",
+      "gerenciar_usuarios"
+    ];
+
+    function valorPermissao(permissoes, key) {
+      const valorAtual = permissoes?.[key];
+      if (valorAtual !== undefined && valorAtual !== null) {
+        return Number(valorAtual) === 1 ? "1" : "0";
+      }
+
+      if (ITEM_CRUD_KEYS.includes(key)) {
+        return Number(permissoes?.criar_editar_itens) === 1 ? "1" : "0";
+      }
+
+      return "0";
+    }
+
     async function carregarPermissoes(id) {
       const p = await api(`/api/usuarios/${id}/permissoes`);
-      Object.keys(p).forEach(k => {
-        const el = document.getElementById(k);
+      PERMISSION_KEYS.forEach((key) => {
+        const el = document.getElementById(key);
         if (el && el.tagName === "SELECT") {
-          el.value = String(Number(p[k]) === 1 ? 1 : 0);
+          el.value = valorPermissao(p, key);
         }
       });
     }
 
     async function salvarPermissoes(id) {
-      const keys = [
-        "ver_dashboard", "ver_inventario", "criar_editar_itens", "ver_etiquetas",
-        "usar_scanner", "ver_movimentacoes", "registrar_movimentacao", "importar_exportar", "gerenciar_usuarios"
-      ];
       const body = {};
-      keys.forEach(k => {
+      PERMISSION_KEYS.forEach(k => {
         const el = document.getElementById(k);
         if (el) body[k] = el.value === "1";
       });
+      body.criar_editar_itens = body.criar_itens || body.editar_itens;
       await api(`/api/usuarios/${id}/permissoes`, "PUT", body);
     }
 
