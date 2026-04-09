@@ -68,9 +68,15 @@
     },
     "files": [
       "**/*",
+      "!.env",
+      "!.env.*",
+      "!db/**",
       "!dist/**",
+      "!dist-final/**",
+      "!dist-novo/**",
       "!backups/**",
       "!uploads/**",
+      "!.smoke-runtime-*/**",
       "!**/*.log"
     ],
     "win": {
