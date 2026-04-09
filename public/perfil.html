@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html" class="ativo"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+              <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="login.html" id="btnSair"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+    <main class="main-content">
+      <header class="page-header">
+        <h2>Perfil</h2>
+        <p>Atualize suas credenciais de acesso</p>
+      </header>
+      <div class="container">
+        <section class="painel-form">
+          <form id="formSenha">
+            <div class="form-group">
+              <label>Senha atual</label>
+              <input type="password" id="senhaAtual" required>
+            </div>
+            <div class="form-group">
+              <label>Nova senha</label>
+              <input type="password" id="senhaNova" required>
+            </div>
+            <button type="submit">Alterar senha</button>
+            <p id="mensagemPerfil"></p>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    async function api(url, method="GET", body){
+      const res = await fetch(url, {
+        method,
+        headers: body ? {"Content-Type":"application/json"} : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || "Erro");
+      return data;
+    }
+
+    async function garantirLogado(){
+      try{
+        await api("/api/me");
+      }catch(e){
+        window.location.href = "/login.html";
+      }
+    }
+
+    document.getElementById("formSenha").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const msg = document.getElementById("mensagemPerfil");
+      msg.textContent = "Alterando...";
+      try{
+        await api("/api/alterar-senha", "POST", {
+          senha_atual: document.getElementById("senhaAtual").value,
+          senha_nova: document.getElementById("senhaNova").value
+        });
+        msg.textContent = "Senha alterada com sucesso";
+        e.target.reset();
+      }catch(err){
+        msg.textContent = err.message || "Erro ao alterar senha";
+      }
+    });
+
+    document.getElementById("btnSair").addEventListener("click", async (e)=>{
+      e.preventDefault();
+      try{ await api("/api/logout", "POST"); }catch(_){}
+      window.location.href = "/login.html";
+    });
+
+    garantirLogado();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

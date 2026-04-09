@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impressão em Lote | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .lote-page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .lote-topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .lote-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 50mm);
+      gap: 1mm;
+      align-content: start;
+      justify-content: start;
+    }
+
+    .etiqueta-slot {
+      position: relative;
+      width: 50mm;
+      min-height: 42mm;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .etiqueta-slot::before {
+      content: "";
+      position: absolute;
+      inset: -0.45mm;
+      border: 0.15mm dashed #c7c7c7;
+      border-radius: 4.2mm;
+      pointer-events: none;
+    }
+
+    @media print {
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+
+      body {
+        background: #fff !important;
+      }
+
+      .lote-topo {
+        display: none !important;
+      }
+
+      .lote-page {
+        margin: 0;
+        padding: 0;
+        max-width: none;
+      }
+
+      .lote-grid {
+        gap: 0.9mm;
+      }
+
+      .etiqueta-slot::before {
+        border-color: #b5b5b5;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="lote-page">
+    <section class="lote-topo">
+      <h2>Etiquetas em lote</h2>
+      <div class="importacao-acoes">
+        <button type="button" id="btnImprimir">Imprimir</button>
+        <button type="button" id="btnFechar">Fechar</button>
+      </div>
+      <p id="loteStatus" class="texto-ajuda"></p>
+    </section>
+
+    <section id="loteGrid" class="lote-grid"></section>
+  </main>
+
+  <script>
+    const LABEL_BATCH_STORAGE_KEY = "uniqstock.labelBatchIds";
+
+    function getIdsDaURL() {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("ids") || "";
+      return raw
+        .split(",")
+        .map((v) => Number(v.trim()))
+        .filter((v) => Number.isFinite(v) && v > 0);
+    }
+
+    function getIdsLocais() {
+      try {
+        const data = JSON.parse(localStorage.getItem(LABEL_BATCH_STORAGE_KEY) || "[]");
+        return Array.isArray(data)
+          ? data.map((v) => Number(v)).filter((v) => Number.isFinite(v) && v > 0)
+          : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    async function getJson(url) {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro");
+      return data;
+    }
+
+    function renderEtiqueta(item, qr) {
+      return `
+        <div class="etiqueta-slot">
+          <div class="etiqueta-conteudo">
+            <img src="/img/uniqstock-logo.png" alt="UniqCode" class="etiqueta-logo">
+            <h3>${item.ferramenta || "-"}</h3>
+            <div class="etiqueta-info">
+              <p><strong>Código:</strong> ${item.codigo || "-"}</p>
+              <p><strong>Categoria:</strong> ${item.categoria || "-"}</p>
+            </div>
+            <img src="${qr}" alt="QR Code" class="etiqueta-qr">
+          </div>
+        </div>
+      `;
+    }
+
+    async function carregarLote() {
+      const loteStatus = document.getElementById("loteStatus");
+      const loteGrid = document.getElementById("loteGrid");
+      const ids = getIdsDaURL().length ? getIdsDaURL() : getIdsLocais();
+
+      if (ids.length === 0) {
+        loteStatus.textContent = "Nenhum item selecionado para impressão.";
+        return;
+      }
+
+      loteStatus.textContent = `Gerando ${ids.length} etiqueta(s)...`;
+
+      await getJson("/api/me");
+      const itens = await getJson("/api/itens");
+      const mapaItens = new Map(itens.map((i) => [Number(i.id), i]));
+
+      const blocos = await Promise.all(
+        ids.map(async (id) => {
+          const item = mapaItens.get(id);
+          if (!item) return "";
+          const qr = await getJson(`/api/qrcode/${id}`);
+          return renderEtiqueta(item, qr.qr);
+        })
+      );
+
+      loteGrid.innerHTML = blocos.filter(Boolean).join("");
+      loteStatus.textContent = `${loteGrid.children.length} etiqueta(s) pronta(s) para impressão.`;
+    }
+
+    document.getElementById("btnImprimir").addEventListener("click", () => {
+      window.print();
+    });
+
+    document.getElementById("btnFechar").addEventListener("click", () => {
+      window.close();
+    });
+
+    carregarLote().catch((e) => {
+      const msg = String(e.message || "");
+      if (msg.toLowerCase().includes("não autenticado")) {
+        window.location.href = "/login.html";
+        return;
+      }
+      const loteStatus = document.getElementById("loteStatus");
+      loteStatus.textContent = msg || "Erro ao gerar lote de etiquetas.";
+    });
+  </script>
+</body>
+
+</html>
+
+
+
+
+
+
+

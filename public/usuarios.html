@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html" class="ativo"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+              <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+    <main class="main-content">
+      <header class="page-header">
+        <h2>Usuários</h2>
+        <p>Gestão de usuários e níveis de acesso</p>
+      </header>
+      <div class="container">
+        <section class="painel-form">
+          <h2>Cadastro de usuário</h2>
+          <form id="formUsuario">
+            <div class="form-group">
+              <label>Usuário</label>
+              <input type="text" id="usuarioNovo" required>
+            </div>
+            <div class="form-group">
+              <label>Senha</label>
+              <input type="password" id="senhaNova" required>
+              <small class="texto-ajuda">Mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.</small>
+            </div>
+            <div class="form-group">
+              <label>Perfil</label>
+              <select id="perfilNovo">
+                <option value="operador">Operador</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <button type="submit">Criar usuário</button>
+            <p id="mensagemUsuario"></p>
+          </form>
+        </section>
+        <section class="painel-lista">
+          <h2>Lista de usuários</h2>
+          <div class="tabela-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Usuário</th>
+                  <th>Perfil</th>
+                  <th class="col-acao">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="listaUsuarios"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    function formatarUsuarioId(id){
+      const numero = Number(id) || 0;
+      return `USR-${String(numero).padStart(4, "0")}`;
+    }
+
+    async function api(url, method="GET", body){
+      const res = await fetch(url, {
+        method,
+        headers: body ? {"Content-Type":"application/json"} : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json();
+      if(!res.ok){
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    async function carregarUsuarios(){
+      const usuarios = await api("/api/usuarios");
+      const tbody = document.getElementById("listaUsuarios");
+      tbody.innerHTML = "";
+      usuarios.forEach(u=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td title="ID interno: ${u.id}">${formatarUsuarioId(u.id)}</td>
+          <td>${u.usuario}</td>
+          <td>${u.perfil}</td>
+          <td class="col-acao">
+            ${u.usuario === "admin" ? "-" : `<button class="btn-acao" onclick="removerUsuario(${u.id})">Remover</button>`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function removerUsuario(id){
+      if(!confirm("Remover este usuário?")) return;
+      await api("/api/usuarios/"+id, "DELETE");
+      carregarUsuarios();
+    }
+
+    document.getElementById("formUsuario").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const mensagem = document.getElementById("mensagemUsuario");
+      const senha = document.getElementById("senhaNova").value.trim();
+      const senhaForte =
+        senha.length >= 8 &&
+        /[A-Z]/.test(senha) &&
+        /[a-z]/.test(senha) &&
+        /[0-9]/.test(senha) &&
+        /[^A-Za-z0-9]/.test(senha);
+
+      if (!senhaForte) {
+        mensagem.textContent = "Senha fraca: use 8+ caracteres com maiúscula, minúscula, número e símbolo.";
+        return;
+      }
+
+      mensagem.textContent = "Criando usuário...";
+      try{
+        await api("/api/usuarios", "POST", {
+          usuario: document.getElementById("usuarioNovo").value.trim(),
+          senha,
+          perfil: document.getElementById("perfilNovo").value
+        });
+        mensagem.textContent = "Usuário criado";
+        e.target.reset();
+        carregarUsuarios();
+      }catch(err){
+        mensagem.textContent = err.message || "Erro ao criar";
+      }
+    });
+
+    carregarUsuarios().catch((e) => {
+      if (e?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+      } else {
+        window.location.href = "/login.html";
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

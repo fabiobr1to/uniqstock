@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permissões | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html" class="ativo"><span class="sidebar-icon">🛡️</span> Permissões</a>
+              <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+    <main class="main-content">
+      <header class="page-header">
+        <h2>Permissões</h2>
+        <p>Controle de acesso por usuário e função</p>
+      </header>
+      <div class="container">
+        <section class="painel-form">
+          <h2>Seleção de usuário</h2>
+          <div class="form-group">
+            <label>Usuário</label>
+            <select id="selectUsuario"></select>
+          </div>
+        </section>
+        <section class="painel-lista">
+          <h2>Matriz de permissões</h2>
+          <div id="permsForm">
+            <div class="perm-item perm-header">
+              <strong>Permissão</strong>
+              <strong>Acesso</strong>
+            </div>
+            <div class="perm-item"><label for="ver_dashboard">Ver Painel</label>
+              <select id="ver_dashboard">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="ver_inventario">Ver Inventário</label>
+              <select id="ver_inventario">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="criar_editar_itens">Criar/Editar Itens</label>
+              <select id="criar_editar_itens">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="ver_etiquetas">Ver Etiquetas</label>
+              <select id="ver_etiquetas">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="usar_scanner">Usar Scanner</label>
+              <select id="usar_scanner">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="ver_movimentacoes">Ver Movimentações</label>
+              <select id="ver_movimentacoes">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="registrar_movimentacao">Registrar Movimentação</label>
+              <select id="registrar_movimentacao">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="importar_exportar">Importar/Exportar</label>
+              <select id="importar_exportar">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <div class="perm-item"><label for="gerenciar_usuarios">Gerenciar Usuários</label>
+              <select id="gerenciar_usuarios">
+                <option value="1">Permitido</option>
+                <option value="0">Negado</option>
+              </select>
+            </div>
+            <button id="btnSalvar">Salvar</button>
+            <p id="mensagemPerms"></p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    async function api(url, method = "GET", body) {
+      const res = await fetch(url, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    async function carregarUsuarios() {
+      const usuarios = await api("/api/usuarios");
+      const sel = document.getElementById("selectUsuario");
+      sel.innerHTML = '<option value="">Selecione</option>';
+      usuarios.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.id;
+        opt.textContent = `${u.usuario} (${u.perfil})`;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function carregarPermissoes(id) {
+      const p = await api(`/api/usuarios/${id}/permissoes`);
+      Object.keys(p).forEach(k => {
+        const el = document.getElementById(k);
+        if (el && el.tagName === "SELECT") {
+          el.value = String(Number(p[k]) === 1 ? 1 : 0);
+        }
+      });
+    }
+
+    async function salvarPermissoes(id) {
+      const keys = [
+        "ver_dashboard", "ver_inventario", "criar_editar_itens", "ver_etiquetas",
+        "usar_scanner", "ver_movimentacoes", "registrar_movimentacao", "importar_exportar", "gerenciar_usuarios"
+      ];
+      const body = {};
+      keys.forEach(k => {
+        const el = document.getElementById(k);
+        if (el) body[k] = el.value === "1";
+      });
+      await api(`/api/usuarios/${id}/permissoes`, "PUT", body);
+    }
+
+    document.getElementById("selectUsuario").addEventListener("change", async (e) => {
+      const id = e.target.value;
+      if (!id) return;
+      await carregarPermissoes(id);
+    });
+
+    document.getElementById("btnSalvar").addEventListener("click", async () => {
+      const id = document.getElementById("selectUsuario").value;
+      const msg = document.getElementById("mensagemPerms");
+      if (!id) { msg.textContent = "Selecione um usuário"; return; }
+      msg.textContent = "Salvando...";
+      try {
+        await salvarPermissoes(id);
+        msg.textContent = "Permissões atualizadas";
+      } catch (e) {
+        msg.textContent = e.message || "Erro ao salvar";
+      }
+    });
+
+    carregarUsuarios().catch((e) => {
+      if (e?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+      } else {
+        window.location.href = "/login.html";
+      }
+    });
+  </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

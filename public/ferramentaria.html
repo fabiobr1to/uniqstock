@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ferramentaria | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+        <p>Sistema de Inventário</p>
+      </a>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
+        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário</span></a>
+        <a href="ferramentaria.html" class="ativo"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Ferramentaria</span></a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span><span class="sidebar-link-label">Cadastrar Ferramenta</span></a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Movimentações</span></a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span><span class="sidebar-link-label">Auditoria</span></a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span><span class="sidebar-link-label">Configurações</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span><span class="sidebar-link-label">Sair</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Balcão de saída</span>
+          <h2>Ferramentaria</h2>
+          <p>Entrega e devolução de ferramentas com foco no controle operacional da Ferramentaria.</p>
+        </div>
+      </header>
+
+      <div class="container">
+        <section class="painel-form inventory-panel">
+          <div class="warehouse-toolbar">
+            <div>
+              <span class="warehouse-badge warehouse-badge-tools">Localização fixa: Ferramentaria</span>
+            </div>
+            <div class="warehouse-actions">
+              <a class="btn-secondary inventory-link-btn" href="scanner.html">Usar scanner</a>
+              <a class="btn-secondary inventory-link-btn" href="movimentacoes.html">Histórico geral</a>
+            </div>
+          </div>
+
+          <div class="warehouse-cards">
+            <div class="warehouse-card">
+              <span>Ferramentas</span>
+              <strong id="ftTotalItens">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Estoque total</span>
+              <strong id="ftTotalEstoque">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Saídas hoje</span>
+              <strong id="ftSaidasHoje">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Entradas hoje</span>
+              <strong id="ftEntradasHoje">0</strong>
+            </div>
+          </div>
+
+          <div class="tool-grid ferramentaria-grid">
+            <section class="tool-panel">
+              <span class="inventory-kicker">Operação</span>
+              <h2>Entrega / Devolução</h2>
+              <p class="tool-panel-copy">Selecione uma ferramenta da Ferramentaria e registre a saída para uso ou a devolução ao setor.</p>
+
+              <div class="tool-form-compact">
+                <div class="form-group">
+                  <label for="ftBuscaCodigo">Código ou ferramenta</label>
+                  <input id="ftBuscaCodigo" type="text" list="ftSugestoes" placeholder="Ex.: PRZ-0001 ou nome da ferramenta" autocomplete="off">
+                  <datalist id="ftSugestoes"></datalist>
+                </div>
+
+                <div id="ftCardItem" class="ferramentaria-item-card is-empty">
+                  <strong>Nenhuma ferramenta selecionada</strong>
+                  <p>Escolha um item da Ferramentaria para liberar os botões de entrega e devolução.</p>
+                </div>
+
+                <div class="tool-form">
+                  <div class="form-group">
+                    <label for="ftQuantidade">Quantidade</label>
+                    <input id="ftQuantidade" type="number" min="1" step="1" value="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="ftFuncionario">Funcionário</label>
+                    <input id="ftFuncionario" type="text" autocomplete="off" placeholder="Responsável pela retirada/devolução">
+                  </div>
+                  <div class="form-group">
+                    <label for="ftObra">Obra</label>
+                    <input id="ftObra" type="text" autocomplete="off" placeholder="Destino da ferramenta, se houver">
+                  </div>
+                  <div class="form-group">
+                    <label for="ftObservacao">Observação</label>
+                    <input id="ftObservacao" type="text" autocomplete="off" placeholder="Ex.: entrega de rotina, devolução parcial">
+                  </div>
+                </div>
+
+                <div class="tool-actions">
+                  <button id="btnEntregaFerramenta" type="button" class="tool-primary-btn">Entregar ferramenta</button>
+                  <button id="btnDevolucaoFerramenta" type="button" class="tool-secondary-action">Registrar devolução</button>
+                </div>
+
+                <p id="ftStatus" class="tool-status"></p>
+              </div>
+            </section>
+
+            <section class="tool-panel tool-panel-secondary">
+              <span class="inventory-kicker">Consulta rápida</span>
+              <h2>Ferramentas da Ferramentaria</h2>
+              <p class="tool-panel-copy">Use a busca para localizar itens já vinculados à Ferramentaria e acompanhar o saldo disponível.</p>
+
+              <div class="inventory-search-block">
+                <label class="inventory-label" for="ftFiltroLista">Buscar na Ferramentaria</label>
+                <input id="ftFiltroLista" class="inventory-search" type="text" placeholder="Buscar por código, ferramenta, categoria ou marca/modelo">
+              </div>
+
+              <div class="inventory-meta">
+                <p id="ftResumoLista" class="inventory-summary">Carregando ferramentas...</p>
+                <span class="inventory-hint">Lista exibida somente para itens com localização Ferramentaria.</span>
+              </div>
+
+              <div class="tabela-wrap">
+                <table class="tabela-inventario compacto">
+                  <thead>
+                    <tr>
+                      <th class="col-codigo">Código</th>
+                      <th class="col-ferramenta">Ferramenta</th>
+                      <th class="col-categoria">Categoria</th>
+                      <th class="col-marca">Marca / Modelo</th>
+                      <th class="col-num">Estoque</th>
+                      <th class="col-acao">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ftTabelaItens"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="painel-lista ferramentaria-historico">
+            <div class="painel-tabela-head">
+              <h2>Últimas operações da Ferramentaria</h2>
+              <span id="ftResumoMov" class="inventory-summary">Carregando histórico...</span>
+            </div>
+
+            <div class="tabela-wrap">
+              <table class="tabela-mov">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Código</th>
+                    <th>Ferramenta</th>
+                    <th>Operação</th>
+                    <th>Quantidade</th>
+                    <th>Funcionário</th>
+                    <th>Obra</th>
+                    <th>Observação</th>
+                  </tr>
+                </thead>
+                <tbody id="ftTabelaMov"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let itensFerramentaria = [];
+    let movimentosFerramentaria = [];
+    let itemSelecionado = null;
+
+    async function getJson(url, options = {}) {
+      const res = await fetch(url, { credentials: "same-origin", ...options });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    function redirecionarErro(err) {
+      if (err?.status === 401) {
+        window.location.href = "/login.html";
+        return true;
+      }
+      if (err?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+        return true;
+      }
+      return false;
+    }
+
+    function ehFerramentaria(valor) {
+      return String(valor || "").trim().toLowerCase() === "ferramentaria";
+    }
+
+    function formatarNumero(valor) {
+      const numero = Number(valor || 0);
+      return Number.isInteger(numero) ? String(numero) : numero.toFixed(2);
+    }
+
+    function escapeHtml(valor) {
+      return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function preencherSugestoes() {
+      const lista = document.getElementById("ftSugestoes");
+      lista.innerHTML = "";
+      itensFerramentaria.forEach((item) => {
+        const optionCodigo = document.createElement("option");
+        optionCodigo.value = item.codigo || "";
+        optionCodigo.label = `${item.codigo || ""} - ${item.ferramenta || ""}`;
+        lista.appendChild(optionCodigo);
+
+        const optionFerramenta = document.createElement("option");
+        optionFerramenta.value = item.ferramenta || "";
+        optionFerramenta.label = item.codigo || "";
+        lista.appendChild(optionFerramenta);
+      });
+    }
+
+    function atualizarCards() {
+      const totalEstoque = itensFerramentaria.reduce((total, item) => total + Number(item.estoque_atual ?? item.quantidade_total ?? 0), 0);
+      const hoje = new Date().toISOString().slice(0, 10);
+      const saidasHoje = movimentosFerramentaria.filter((mov) => String(mov.data || "").slice(0, 10) === hoje && mov.tipo === "SAIDA").length;
+      const entradasHoje = movimentosFerramentaria.filter((mov) => String(mov.data || "").slice(0, 10) === hoje && mov.tipo === "ENTRADA").length;
+
+      document.getElementById("ftTotalItens").textContent = String(itensFerramentaria.length);
+      document.getElementById("ftTotalEstoque").textContent = formatarNumero(totalEstoque);
+      document.getElementById("ftSaidasHoje").textContent = String(saidasHoje);
+      document.getElementById("ftEntradasHoje").textContent = String(entradasHoje);
+    }
+
+    function atualizarItemSelecionado() {
+      const card = document.getElementById("ftCardItem");
+      const btnEntrega = document.getElementById("btnEntregaFerramenta");
+      const btnDevolucao = document.getElementById("btnDevolucaoFerramenta");
+
+      if (!itemSelecionado) {
+        card.className = "ferramentaria-item-card is-empty";
+        card.innerHTML = "<strong>Nenhuma ferramenta selecionada</strong><p>Escolha um item da Ferramentaria para liberar os botões de entrega e devolução.</p>";
+        btnEntrega.disabled = true;
+        btnDevolucao.disabled = true;
+        return;
+      }
+
+      card.className = "ferramentaria-item-card";
+      card.innerHTML = `
+        <strong>${escapeHtml(itemSelecionado.codigo || "")} - ${escapeHtml(itemSelecionado.ferramenta || "")}</strong>
+        <p>Categoria: ${escapeHtml(itemSelecionado.categoria || "-")} | Marca / Modelo: ${escapeHtml(itemSelecionado.marca_modelo || "-")}</p>
+        <p>Estoque disponível: ${escapeHtml(formatarNumero(itemSelecionado.estoque_atual ?? itemSelecionado.quantidade_total ?? 0))} | Localização: ${escapeHtml(itemSelecionado.localizacao || "-")}</p>
+      `;
+      btnEntrega.disabled = false;
+      btnDevolucao.disabled = false;
+    }
+
+    function selecionarItemPorTermo(termo) {
+      const busca = String(termo || "").trim().toLowerCase();
+      itemSelecionado = itensFerramentaria.find((item) => String(item.codigo || "").trim().toLowerCase() === busca)
+        || itensFerramentaria.find((item) => String(item.ferramenta || "").trim().toLowerCase() === busca)
+        || itensFerramentaria.find((item) => `${item.codigo || ""} ${item.ferramenta || ""}`.toLowerCase().includes(busca))
+        || null;
+      atualizarItemSelecionado();
+    }
+
+    function renderTabelaItens() {
+      const termo = String(document.getElementById("ftFiltroLista").value || "").trim().toLowerCase();
+      const lista = !termo
+        ? itensFerramentaria
+        : itensFerramentaria.filter((item) => [item.codigo, item.ferramenta, item.categoria, item.marca_modelo]
+          .join(" ")
+          .toLowerCase()
+          .includes(termo));
+      const tbody = document.getElementById("ftTabelaItens");
+      const resumo = document.getElementById("ftResumoLista");
+
+      tbody.innerHTML = "";
+      resumo.textContent = `${lista.length} ferramenta(s) exibida(s) na Ferramentaria`;
+
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Nenhuma ferramenta encontrada na Ferramentaria.</td></tr>';
+        return;
+      }
+
+      lista.forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="col-codigo" data-label="Código">${escapeHtml(item.codigo || "")}</td>
+          <td class="col-ferramenta" data-label="Ferramenta">${escapeHtml(item.ferramenta || "")}</td>
+          <td class="col-categoria" data-label="Categoria">${escapeHtml(item.categoria || "")}</td>
+          <td class="col-marca" data-label="Marca / Modelo">${escapeHtml(item.marca_modelo || "")}</td>
+          <td class="col-num" data-label="Estoque">${escapeHtml(formatarNumero(item.estoque_atual ?? item.quantidade_total ?? 0))}</td>
+          <td class="col-acao" data-label="Ação"><button type="button" class="btn-editar-item" data-item-id="${item.id}">Selecionar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTabelaMov() {
+      const tbody = document.getElementById("ftTabelaMov");
+      const resumo = document.getElementById("ftResumoMov");
+      tbody.innerHTML = "";
+      resumo.textContent = `${movimentosFerramentaria.length} operação(ões) recentes na Ferramentaria`;
+
+      if (!movimentosFerramentaria.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma operação registrada ainda para a Ferramentaria.</td></tr>';
+        return;
+      }
+
+      movimentosFerramentaria.slice(0, 30).forEach((mov) => {
+        const tr = document.createElement("tr");
+        const data = mov.data ? new Date(mov.data).toLocaleString("pt-BR") : "-";
+        const operacao = mov.tipo === "SAIDA" ? "Entrega" : "Devolução";
+        tr.innerHTML = `
+          <td data-label="Data">${escapeHtml(data)}</td>
+          <td data-label="Código">${escapeHtml(mov.codigo || "")}</td>
+          <td data-label="Ferramenta">${escapeHtml(mov.ferramenta || "")}</td>
+          <td data-label="Operação">${escapeHtml(operacao)}</td>
+          <td data-label="Quantidade">${escapeHtml(formatarNumero(mov.quantidade || 0))}</td>
+          <td data-label="Funcionário">${escapeHtml(mov.funcionario || "-")}</td>
+          <td data-label="Obra">${escapeHtml(mov.obra || "-")}</td>
+          <td data-label="Observação">${escapeHtml(mov.observacao || "-")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function registrarOperacao(tipo) {
+      if (!itemSelecionado) return;
+
+      const quantidade = Number(document.getElementById("ftQuantidade").value || 0);
+      const funcionario = document.getElementById("ftFuncionario").value;
+      const obra = document.getElementById("ftObra").value;
+      const observacao = document.getElementById("ftObservacao").value;
+      const status = document.getElementById("ftStatus");
+
+      status.textContent = "Registrando operação...";
+
+      try {
+        await getJson("/api/movimentacoes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            item_id: itemSelecionado.id,
+            tipo,
+            quantidade,
+            funcionario,
+            obra,
+            observacao
+          })
+        });
+
+        status.textContent = tipo === "SAIDA"
+          ? "Entrega registrada com sucesso."
+          : "Devolução registrada com sucesso.";
+
+        document.getElementById("ftQuantidade").value = "1";
+        document.getElementById("ftFuncionario").value = "";
+        document.getElementById("ftObra").value = "";
+        document.getElementById("ftObservacao").value = "";
+
+        await carregarPagina();
+        if (itemSelecionado?.codigo) {
+          document.getElementById("ftBuscaCodigo").value = itemSelecionado.codigo;
+          selecionarItemPorTermo(itemSelecionado.codigo);
+        }
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          status.textContent = err.message || "Não foi possível registrar a operação.";
+        }
+      }
+    }
+
+    async function carregarPagina() {
+      try {
+        const [itens, movs] = await Promise.all([
+          getJson("/api/itens"),
+          getJson("/api/movimentacoes")
+        ]);
+
+        itensFerramentaria = itens.filter((item) => ehFerramentaria(item.localizacao));
+        const idsFerramentaria = new Set(itensFerramentaria.map((item) => Number(item.id)));
+        movimentosFerramentaria = movs.filter((mov) => idsFerramentaria.has(Number(mov.item_id)));
+
+        preencherSugestoes();
+        atualizarCards();
+        renderTabelaItens();
+        renderTabelaMov();
+
+        if (itemSelecionado?.id) {
+          itemSelecionado = itensFerramentaria.find((item) => Number(item.id) === Number(itemSelecionado.id)) || null;
+        }
+        atualizarItemSelecionado();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          document.getElementById("ftStatus").textContent = err.message || "Erro ao carregar Ferramentaria.";
+          document.getElementById("ftResumoLista").textContent = "Erro ao carregar ferramentas.";
+          document.getElementById("ftResumoMov").textContent = "Erro ao carregar histórico.";
+        }
+      }
+    }
+
+    document.getElementById("ftBuscaCodigo").addEventListener("change", (event) => {
+      selecionarItemPorTermo(event.target.value);
+    });
+
+    document.getElementById("ftBuscaCodigo").addEventListener("input", (event) => {
+      if (!event.target.value.trim()) {
+        itemSelecionado = null;
+        atualizarItemSelecionado();
+      }
+    });
+
+    document.getElementById("ftFiltroLista").addEventListener("input", renderTabelaItens);
+
+    document.getElementById("ftTabelaItens").addEventListener("click", (event) => {
+      const botao = event.target.closest("button[data-item-id]");
+      if (!botao) return;
+      const item = itensFerramentaria.find((registro) => Number(registro.id) === Number(botao.dataset.itemId));
+      if (!item) return;
+      itemSelecionado = item;
+      document.getElementById("ftBuscaCodigo").value = item.codigo || item.ferramenta || "";
+      atualizarItemSelecionado();
+    });
+
+    document.getElementById("btnEntregaFerramenta").addEventListener("click", () => registrarOperacao("SAIDA"));
+    document.getElementById("btnDevolucaoFerramenta").addEventListener("click", () => registrarOperacao("ENTRADA"));
+
+    carregarPagina();
+  </script>
+</body>
+</html>

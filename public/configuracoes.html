@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurações | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span> Ferramentaria</a>
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span> Almoxarifado</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html" class="ativo"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Administração</span>
+          <h2>Configurações</h2>
+          <p>Ajustes gerais, rotinas de backup e listas controladas do sistema.</p>
+        </div>
+      </header>
+
+      <div class="container">
+        <div class="config-cards config-cards-polished">
+          <section class="painel-form config-card config-card-polished">
+            <h2>Rotina de backup diário</h2>
+            <form id="formBackup" class="config-backup-form">
+              <div class="form-group">
+                <label for="backupHabilitado">Ativar backup automático</label>
+                <select id="backupHabilitado">
+                  <option value="1">Ativado</option>
+                  <option value="0">Desativado</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="backupHorario">Horário do backup diário</label>
+                <input type="time" id="backupHorario" required>
+              </div>
+
+              <div class="form-group config-span-2">
+                <label for="backupRetencao">Reter backups por (dias)</label>
+                <input type="number" id="backupRetencao" min="1" max="365" required>
+              </div>
+              <div class="form-group config-span-2">
+                <label for="estoqueBaixoLimite">Limite de estoque baixo</label>
+                <input type="number" id="estoqueBaixoLimite" min="1" max="999" required>
+                <small class="texto-ajuda">Itens com estoque menor ou igual a este valor serão marcados como "Baixo".</small>
+              </div>
+
+              <div class="config-actions config-span-2">
+                <button type="submit">Salvar configurações</button>
+                <button type="button" id="btnExecutarBackup">Executar backup agora</button>
+              </div>
+            </form>
+            <p id="statusBackup" class="texto-ajuda config-status"></p>
+          </section>
+
+          <section class="painel-form config-card config-card-polished">
+            <h2>Atualização do sistema</h2>
+            <div class="form-group">
+              <label>Versão instalada</label>
+              <input type="text" id="versaoAtualApp" value="Carregando..." readonly>
+            </div>
+            <div class="config-actions">
+              <button type="button" id="btnVerificarAtualizacao">Procurar atualização</button>
+            </div>
+            <p id="statusAtualizacao" class="texto-ajuda config-status"></p>
+            <p id="infoAtualizacao" class="texto-ajuda"></p>
+            <p>
+              <a id="linkAtualizacao" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+                Baixar nova versão
+              </a>
+            </p>
+          </section>
+
+          <section class="painel-form config-card config-card-polished">
+            <h2>Categorias</h2>
+            <p class="texto-ajuda">Adicione categorias extras para aparecerem no cadastro e na edição de itens.</p>
+            <form id="formCategorias" class="config-backup-form">
+              <div class="form-group config-span-2">
+                <label for="novaCategoria">Nova categoria</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <input type="text" id="novaCategoria" placeholder="Ex.: Soldagem" style="flex:1;min-width:220px;">
+                  <button type="button" id="btnAdicionarCategoria">Adicionar</button>
+                </div>
+              </div>
+              <div class="form-group config-span-2">
+                <label>Categorias extras cadastradas</label>
+                <div id="listaCategoriasCustomizadas" class="chips-list"></div>
+              </div>
+              <div class="config-actions config-span-2">
+                <button type="submit">Salvar categorias</button>
+              </div>
+            </form>
+            <p id="statusCategorias" class="texto-ajuda config-status"></p>
+          </section>
+
+          <section class="painel-form config-card config-card-polished">
+            <h2>Localizações</h2>
+            <p class="texto-ajuda">Adicione localizações extras para aparecerem no cadastro e na edição de itens.</p>
+            <form id="formLocalizacoes" class="config-backup-form">
+              <div class="form-group config-span-2">
+                <label for="novaLocalizacao">Nova localização</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <input type="text" id="novaLocalizacao" placeholder="Ex.: Oficina" style="flex:1;min-width:220px;">
+                  <button type="button" id="btnAdicionarLocalizacao">Adicionar</button>
+                </div>
+              </div>
+              <div class="form-group config-span-2">
+                <label>Localizações extras cadastradas</label>
+                <div id="listaLocalizacoesCustomizadas" class="chips-list"></div>
+              </div>
+              <div class="config-actions config-span-2">
+                <button type="submit">Salvar localizações</button>
+              </div>
+            </form>
+            <p id="statusLocalizacoes" class="texto-ajuda config-status"></p>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let versaoAtual = "0.1.0-beta.1";
+    const CATEGORY_STORAGE_KEY = "uniqstock.customCategories";
+    const LOCATION_STORAGE_KEY = "uniqstock.customLocations";
+    let categoriasPadrao = [];
+    let categoriasCustomizadas = [];
+    let localizacoesPadrao = [];
+    let localizacoesCustomizadas = [];
+
+    async function api(url, method = "GET", body) {
+      const res = await fetch(url, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    async function carregarVersaoAtual() {
+      try {
+        const dados = await api("/api/app/version");
+        versaoAtual = dados.version || versaoAtual;
+      } catch (_) {}
+      document.getElementById("versaoAtualApp").value = versaoAtual;
+    }
+
+    async function verificarAtualizacao() {
+      const status = document.getElementById("statusAtualizacao");
+      const info = document.getElementById("infoAtualizacao");
+      const link = document.getElementById("linkAtualizacao");
+      const btn = document.getElementById("btnVerificarAtualizacao");
+
+      status.textContent = "Verificando atualizações...";
+      info.textContent = "";
+      link.style.display = "none";
+      link.removeAttribute("href");
+      btn.disabled = true;
+
+      try {
+        const dados = await api(`/api/app/update-check?current=${encodeURIComponent(versaoAtual)}`);
+        if (!dados.latest) {
+          status.textContent = "Nenhuma versão publicada foi encontrada.";
+          return;
+        }
+
+        if (dados.update_available) {
+          status.textContent = `Nova versão disponível: ${dados.latest.version}`;
+          info.textContent = dados.latest.notes ? `Notas: ${dados.latest.notes}` : "";
+          link.href = dados.latest.url_installer;
+          link.style.display = "inline";
+          return;
+        }
+
+        status.textContent = "Seu sistema já está atualizado.";
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao verificar atualização.";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function carregarConfiguracoes() {
+      const dados = await api("/api/configuracoes/backup");
+      const dadosEstoque = await api("/api/configuracoes/estoque");
+      document.getElementById("backupHabilitado").value = dados.backup_auto_habilitado ? "1" : "0";
+      document.getElementById("backupHorario").value = dados.backup_auto_horario || "02:00";
+      document.getElementById("backupRetencao").value = dados.backup_reter_dias || 15;
+      document.getElementById("estoqueBaixoLimite").value = dadosEstoque.estoque_baixo_limite || 2;
+    }
+
+    function renderCategoriasCustomizadas() {
+      const host = document.getElementById("listaCategoriasCustomizadas");
+      host.innerHTML = "";
+
+      if (!categoriasCustomizadas.length) {
+        host.innerHTML = '<span class="texto-ajuda">Nenhuma categoria extra cadastrada.</span>';
+        return;
+      }
+
+      categoriasCustomizadas.forEach((categoria, index) => {
+        const chip = document.createElement("span");
+        chip.className = "categoria-chip";
+        chip.innerHTML = `<span>${categoria}</span><button type="button" data-index="${index}" data-kind="categoria" aria-label="Excluir categoria" title="Excluir categoria">Excluir</button>`;
+        host.appendChild(chip);
+      });
+    }
+
+    function renderLocalizacoesCustomizadas() {
+      const host = document.getElementById("listaLocalizacoesCustomizadas");
+      host.innerHTML = "";
+
+      if (!localizacoesCustomizadas.length) {
+        host.innerHTML = '<span class="texto-ajuda">Nenhuma localização extra cadastrada.</span>';
+        return;
+      }
+
+      localizacoesCustomizadas.forEach((localizacao, index) => {
+        const chip = document.createElement("span");
+        chip.className = "categoria-chip";
+        chip.innerHTML = `<span>${localizacao}</span><button type="button" data-index="${index}" data-kind="localizacao" aria-label="Excluir localização" title="Excluir localização">Excluir</button>`;
+        host.appendChild(chip);
+      });
+    }
+
+    async function carregarCategorias() {
+      const dados = await api("/api/configuracoes/categorias");
+      categoriasPadrao = Array.isArray(dados.padrao) ? dados.padrao : [];
+      categoriasCustomizadas = Array.isArray(dados.customizadas) ? dados.customizadas : [];
+      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(categoriasCustomizadas));
+      renderCategoriasCustomizadas();
+    }
+
+    async function carregarLocalizacoes() {
+      const dados = await api("/api/configuracoes/localizacoes");
+      localizacoesPadrao = Array.isArray(dados.padrao) ? dados.padrao : [];
+      localizacoesCustomizadas = Array.isArray(dados.customizadas) ? dados.customizadas : [];
+      localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(localizacoesCustomizadas));
+      renderLocalizacoesCustomizadas();
+    }
+
+    function adicionarCategoriaLocal() {
+      const input = document.getElementById("novaCategoria");
+      const valor = String(input.value || "").trim();
+      const status = document.getElementById("statusCategorias");
+      status.textContent = "";
+
+      if (!valor) return;
+
+      const existePadrao = categoriasPadrao.some((item) => item.toLowerCase() === valor.toLowerCase());
+      const existeCustomizada = categoriasCustomizadas.some((item) => item.toLowerCase() === valor.toLowerCase());
+      if (existePadrao || existeCustomizada) {
+        status.textContent = "Essa categoria já existe.";
+        return;
+      }
+
+      categoriasCustomizadas.push(valor);
+      categoriasCustomizadas.sort((a, b) => a.localeCompare(b, "pt-BR"));
+      input.value = "";
+      renderCategoriasCustomizadas();
+    }
+
+    function adicionarLocalizacaoLocal() {
+      const input = document.getElementById("novaLocalizacao");
+      const valor = String(input.value || "").trim();
+      const status = document.getElementById("statusLocalizacoes");
+      status.textContent = "";
+
+      if (!valor) return;
+
+      const existePadrao = localizacoesPadrao.some((item) => item.toLowerCase() === valor.toLowerCase());
+      const existeCustomizada = localizacoesCustomizadas.some((item) => item.toLowerCase() === valor.toLowerCase());
+      if (existePadrao || existeCustomizada) {
+        status.textContent = "Essa localização já existe.";
+        return;
+      }
+
+      localizacoesCustomizadas.push(valor);
+      localizacoesCustomizadas.sort((a, b) => a.localeCompare(b, "pt-BR"));
+      input.value = "";
+      renderLocalizacoesCustomizadas();
+    }
+
+    async function salvarCategoriasNoServidor(statusEl) {
+      const dados = await api("/api/configuracoes/categorias", "PUT", {
+        categorias: categoriasCustomizadas
+      });
+      categoriasPadrao = Array.isArray(dados.padrao) ? dados.padrao : categoriasPadrao;
+      categoriasCustomizadas = Array.isArray(dados.customizadas) ? dados.customizadas : categoriasCustomizadas;
+      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(categoriasCustomizadas));
+      renderCategoriasCustomizadas();
+      if (statusEl) statusEl.textContent = "Categorias salvas com sucesso.";
+    }
+
+    async function salvarLocalizacoesNoServidor(statusEl) {
+      const dados = await api("/api/configuracoes/localizacoes", "PUT", {
+        localizacoes: localizacoesCustomizadas
+      });
+      localizacoesPadrao = Array.isArray(dados.padrao) ? dados.padrao : localizacoesPadrao;
+      localizacoesCustomizadas = Array.isArray(dados.customizadas) ? dados.customizadas : localizacoesCustomizadas;
+      localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(localizacoesCustomizadas));
+      renderLocalizacoesCustomizadas();
+      if (statusEl) statusEl.textContent = "Localizações salvas com sucesso.";
+    }
+
+    document.getElementById("formBackup").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = document.getElementById("statusBackup");
+      status.textContent = "Salvando...";
+      try {
+        await api("/api/configuracoes/backup", "PUT", {
+          backup_auto_habilitado: document.getElementById("backupHabilitado").value === "1",
+          backup_auto_horario: document.getElementById("backupHorario").value,
+          backup_reter_dias: Number(document.getElementById("backupRetencao").value || 15)
+        });
+        await api("/api/configuracoes/estoque", "PUT", {
+          estoque_baixo_limite: Number(document.getElementById("estoqueBaixoLimite").value || 2)
+        });
+        status.textContent = "Configurações salvas com sucesso.";
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao salvar configurações.";
+      }
+    });
+
+    document.getElementById("btnExecutarBackup").addEventListener("click", async () => {
+      const status = document.getElementById("statusBackup");
+      status.textContent = "Executando backup...";
+      try {
+        await api("/api/configuracoes/backup/executar", "POST");
+        status.textContent = "Backup executado com sucesso.";
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao executar backup.";
+      }
+    });
+
+    document.getElementById("btnAdicionarCategoria").addEventListener("click", adicionarCategoriaLocal);
+    document.getElementById("btnAdicionarLocalizacao").addEventListener("click", adicionarLocalizacaoLocal);
+
+    document.getElementById("novaCategoria").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        adicionarCategoriaLocal();
+      }
+    });
+
+    document.getElementById("novaLocalizacao").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        adicionarLocalizacaoLocal();
+      }
+    });
+
+    document.getElementById("listaCategoriasCustomizadas").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-index]");
+      if (!btn) return;
+      const categoria = categoriasCustomizadas[Number(btn.dataset.index)];
+      if (!categoria) return;
+      if (!confirm(`Excluir a categoria "${categoria}"?`)) return;
+
+      const status = document.getElementById("statusCategorias");
+      status.textContent = "Excluindo categoria...";
+      categoriasCustomizadas.splice(Number(btn.dataset.index), 1);
+      salvarCategoriasNoServidor(status).catch((e2) => {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao excluir categoria.";
+        carregarCategorias().catch(() => {});
+      });
+    });
+
+    document.getElementById("listaLocalizacoesCustomizadas").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-index]");
+      if (!btn) return;
+      const localizacao = localizacoesCustomizadas[Number(btn.dataset.index)];
+      if (!localizacao) return;
+      if (!confirm(`Excluir a localização "${localizacao}"?`)) return;
+
+      const status = document.getElementById("statusLocalizacoes");
+      status.textContent = "Excluindo localização...";
+      localizacoesCustomizadas.splice(Number(btn.dataset.index), 1);
+      salvarLocalizacoesNoServidor(status).catch((e2) => {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao excluir localização.";
+        carregarLocalizacoes().catch(() => {});
+      });
+    });
+
+    document.getElementById("formCategorias").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = document.getElementById("statusCategorias");
+      status.textContent = "Salvando categorias...";
+      try {
+        await salvarCategoriasNoServidor(status);
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao salvar categorias.";
+      }
+    });
+
+    document.getElementById("formLocalizacoes").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = document.getElementById("statusLocalizacoes");
+      status.textContent = "Salvando localizações...";
+      try {
+        await salvarLocalizacoesNoServidor(status);
+      } catch (e2) {
+        if (e2.status === 401) return window.location.href = "/login.html";
+        if (e2.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e2.message || "Erro ao salvar localizações.";
+      }
+    });
+
+    document.getElementById("btnVerificarAtualizacao").addEventListener("click", verificarAtualizacao);
+
+    Promise.all([
+      carregarConfiguracoes(),
+      carregarVersaoAtual(),
+      carregarCategorias(),
+      carregarLocalizacoes()
+    ]).catch((e) => {
+      if (e?.status === 401) {
+        window.location.href = "/login.html";
+      } else if (e?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+      } else {
+        document.getElementById("statusBackup").textContent = e.message || "Erro ao carregar configurações.";
+      }
+    });
+  </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

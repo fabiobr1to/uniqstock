@@ -1,0 +1,18 @@
+node_modules/
+.env
+
+# Runtime and local data
+uploads/
+backups/
+db/*.db
+db/*.sqlite
+db/*.sqlite3
+.smoke-runtime-*/
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+dist-final/
+dist-novo/

@@ -1,23 +1,28 @@
+﻿require("dotenv").config();
+
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
 const QRCode = require("qrcode");
 const path = require("path");
 const csv = require("csv-parser");
 const multer = require("multer");
 const fs = require("fs");
 const os = require("os");
+const { Readable } = require("stream");
 const xlsx = require("xlsx");
+const PDFDocument = require("pdfkit");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
+const { createDatabase } = require("./lib/database");
+const { initDatabaseSchema } = require("./lib/schema");
 const packageJson = require("./package.json");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
 // =========================
-// PASTAS NECESSÁRIAS
+// PASTAS NECESSÃRIAS
 // =========================
 const RUNTIME_BASE_DIR = process.env.UNIQSTOCK_RUNTIME_DIR
   ? path.resolve(process.env.UNIQSTOCK_RUNTIME_DIR)
@@ -30,17 +35,26 @@ if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
-const db = new sqlite3.Database(path.join(DB_DIR, "inventario.db"));
+const DB_CLIENT = String(process.env.DB_CLIENT || "sqlite").trim().toLowerCase();
+const db = createDatabase({ sqliteFile: path.join(DB_DIR, "inventario.db") });
 const upload = multer({ dest: UPLOAD_DIR });
 const LICENSE_SECRET = process.env.UNIQSTOCK_LICENSE_SECRET || "uniqstock-license-secret-change";
+const OFFLINE_LICENSE_GRACE_DAYS = Math.max(1, Number(process.env.UNIQSTOCK_OFFLINE_GRACE_DAYS || 30));
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const USE_SUPABASE_LICENSE = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const FORCE_LOCAL_LICENSE = ["1", "true", "yes", "on"].includes(
+  String(process.env.UNIQSTOCK_FORCE_LOCAL_LICENSE || "").trim().toLowerCase()
+);
+const USE_SUPABASE_LICENSE = !FORCE_LOCAL_LICENSE && Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 const supabase = USE_SUPABASE_LICENSE
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     })
   : null;
+
+if (DB_CLIENT === "postgres") {
+  console.warn("DB_CLIENT=postgres detectado. Conexao e schema inicial preparados; adaptacoes de queries e migracao de dados ainda pendentes.");
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -100,11 +114,12 @@ function gerarCodigoMaquina() {
   return `MCH-${hash.slice(0, 16).toUpperCase()}`;
 }
 
+// eslint-disable-next-line no-unused-vars
 function gerarChaveLicenca(cliente, expiraEm, codigoMaquina = "") {
   const clienteLimpo = String(cliente || "").trim();
   const dataIso = normalizarDataIso(expiraEm);
   if (!clienteLimpo || !dataIso) {
-    throw new Error("Cliente e data de expiração válidos são obrigatórios");
+    throw new Error("Cliente e data de expiraÃ§Ã£o vÃ¡lidos sÃ£o obrigatÃ³rios");
   }
   const payload = {
     v: 1,
@@ -122,7 +137,7 @@ function validarChaveLicenca(chave, codigoMaquinaLocal = "") {
   const texto = String(chave || "").trim();
   const partes = texto.split(".");
   if (partes.length !== 3 || partes[0] !== "USK1") {
-    return { ok: false, motivo: "Formato de chave inválido" };
+    return { ok: false, motivo: "Formato de chave invÃ¡lido" };
   }
 
   const payloadB64 = partes[1];
@@ -133,14 +148,14 @@ function validarChaveLicenca(chave, codigoMaquinaLocal = "") {
 
   if (assinaturaBuf.length !== esperadoBuf.length ||
       !crypto.timingSafeEqual(assinaturaBuf, esperadoBuf)) {
-    return { ok: false, motivo: "Assinatura inválida" };
+    return { ok: false, motivo: "Assinatura invÃ¡lida" };
   }
 
   let payload;
   try {
     payload = JSON.parse(fromBase64Url(payloadB64));
   } catch (_) {
-    return { ok: false, motivo: "Payload da chave inválido" };
+    return { ok: false, motivo: "Payload da chave invÃ¡lido" };
   }
 
   const dataIso = normalizarDataIso(payload?.exp);
@@ -151,10 +166,10 @@ function validarChaveLicenca(chave, codigoMaquinaLocal = "") {
     return { ok: false, motivo: "Dados da chave incompletos" };
   }
   if (codigoMaquinaChave && codigoMaquinaChave !== codigoMaquina) {
-    return { ok: false, motivo: "Licença vinculada a outra máquina" };
+    return { ok: false, motivo: "LicenÃ§a vinculada a outra mÃ¡quina" };
   }
   if (calcularDiasRestantes(dataIso) < 0) {
-    return { ok: false, motivo: "Licença expirada" };
+    return { ok: false, motivo: "LicenÃ§a expirada" };
   }
 
   return { ok: true, payload: { cliente, exp: dataIso, mch: codigoMaquinaChave || null } };
@@ -168,7 +183,7 @@ async function obterStatusLicencaLocal() {
     if (!ativa || !chave) {
       return {
         ativa: false,
-        motivo: "Licença não ativada",
+        motivo: "LicenÃ§a nÃ£o ativada",
         codigo_maquina: codigoMaquina,
         provedor: "local"
       };
@@ -196,11 +211,69 @@ async function obterStatusLicencaLocal() {
   } catch (e) {
     return {
       ativa: false,
-      motivo: "Não foi possível validar a licença",
+      motivo: "NÃ£o foi possÃ­vel validar a licenÃ§a",
       codigo_maquina: gerarCodigoMaquina(),
       provedor: "local"
     };
   }
+}
+
+async function salvarCacheLicencaSupabase({ cliente, expiraEm, codigoMaquina, validadaEm = null }) {
+  await definirConfigValor("licenca_cache_cliente", String(cliente || ""));
+  await definirConfigValor("licenca_cache_expira_em", String(expiraEm || ""));
+  await definirConfigValor("licenca_cache_machine_code", String(codigoMaquina || ""));
+  await definirConfigValor("licenca_cache_validada_em", validadaEm || new Date().toISOString());
+}
+
+async function obterStatusLicencaCacheSupabase(codigoMaquina) {
+  const cliente = await obterConfigValor("licenca_cache_cliente", "");
+  const expiraEm = normalizarDataIso(await obterConfigValor("licenca_cache_expira_em", ""));
+  const machineCodeCache = normalizeText(await obterConfigValor("licenca_cache_machine_code", "")).toUpperCase();
+  const validadaEm = normalizeText(await obterConfigValor("licenca_cache_validada_em", ""));
+
+  if (!cliente || !expiraEm || !validadaEm) {
+    return null;
+  }
+
+  if (machineCodeCache && machineCodeCache !== codigoMaquina) {
+    return null;
+  }
+
+  const dataValidacao = new Date(validadaEm);
+  if (Number.isNaN(dataValidacao.getTime())) {
+    return null;
+  }
+
+  const diasSemValidar = Math.floor((Date.now() - dataValidacao.getTime()) / (24 * 60 * 60 * 1000));
+  if (diasSemValidar > OFFLINE_LICENSE_GRACE_DAYS) {
+    return {
+      ativa: false,
+      motivo: `LicenÃ§a offline expirada apÃ³s ${OFFLINE_LICENSE_GRACE_DAYS} dia(s) sem validaÃ§Ã£o`,
+      codigo_maquina: codigoMaquina,
+      provedor: "supabase-cache"
+    };
+  }
+
+  const diasRestantes = calcularDiasRestantes(expiraEm);
+  if (diasRestantes < 0) {
+    return {
+      ativa: false,
+      motivo: "LicenÃ§a expirada",
+      codigo_maquina: codigoMaquina,
+      provedor: "supabase-cache"
+    };
+  }
+
+  return {
+    ativa: true,
+    cliente,
+    expira_em: expiraEm,
+    dias_restantes: diasRestantes,
+    codigo_maquina: codigoMaquina,
+    provedor: "supabase-cache",
+    offline: true,
+    ultima_validacao_online_em: validadaEm
+  };
 }
 
 async function obterStatusLicencaSupabase() {
@@ -209,7 +282,7 @@ async function obterStatusLicencaSupabase() {
   if (!chave) {
     return {
       ativa: false,
-      motivo: "Licença não ativada",
+      motivo: "LicenÃ§a nÃ£o ativada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -222,9 +295,11 @@ async function obterStatusLicencaSupabase() {
     .maybeSingle();
 
   if (error) {
+    const cache = await obterStatusLicencaCacheSupabase(codigoMaquina);
+    if (cache) return cache;
     return {
       ativa: false,
-      motivo: "Servidor de licenças indisponível",
+      motivo: "Servidor de licenÃ§as indisponÃ­vel",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -233,7 +308,7 @@ async function obterStatusLicencaSupabase() {
   if (!data) {
     return {
       ativa: false,
-      motivo: "Chave não encontrada no servidor de licenças",
+      motivo: "Chave nÃ£o encontrada no servidor de licenÃ§as",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -243,7 +318,7 @@ async function obterStatusLicencaSupabase() {
   if (status === "revoked" || status === "suspended") {
     return {
       ativa: false,
-      motivo: "Licença revogada",
+      motivo: "LicenÃ§a revogada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -253,7 +328,7 @@ async function obterStatusLicencaSupabase() {
   if (!expIso || calcularDiasRestantes(expIso) < 0) {
     return {
       ativa: false,
-      motivo: "Licença expirada",
+      motivo: "LicenÃ§a expirada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -263,7 +338,7 @@ async function obterStatusLicencaSupabase() {
   if (!machineCodeDb) {
     return {
       ativa: false,
-      motivo: "Licença ainda não ativada neste dispositivo",
+      motivo: "LicenÃ§a ainda nÃ£o ativada neste dispositivo",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -272,13 +347,19 @@ async function obterStatusLicencaSupabase() {
   if (machineCodeDb !== codigoMaquina) {
     return {
       ativa: false,
-      motivo: "Licença vinculada a outra máquina",
+      motivo: "LicenÃ§a vinculada a outra mÃ¡quina",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
   }
 
   const diasRestantes = calcularDiasRestantes(expIso);
+  await salvarCacheLicencaSupabase({
+    cliente: String(data.client_name || "Cliente"),
+    expiraEm: expIso,
+    codigoMaquina,
+    validadaEm: new Date().toISOString()
+  });
   return {
     ativa: true,
     cliente: String(data.client_name || "Cliente"),
@@ -317,26 +398,26 @@ async function ativarLicencaSupabase(chave) {
     .maybeSingle();
 
   if (error) {
-    return { ok: false, error: "Servidor de licenças indisponível", status: 503 };
+    return { ok: false, error: "Servidor de licenÃ§as indisponÃ­vel", status: 503 };
   }
 
   if (!data) {
-    return { ok: false, error: "Chave não encontrada", status: 400 };
+    return { ok: false, error: "Chave nÃ£o encontrada", status: 400 };
   }
 
   const status = String(data.status || "").toLowerCase();
   if (status === "revoked" || status === "suspended") {
-    return { ok: false, error: "Licença revogada", status: 400 };
+    return { ok: false, error: "LicenÃ§a revogada", status: 400 };
   }
 
   const expIso = normalizarDataIso(String(data.expires_at || "").slice(0, 10));
   if (!expIso || calcularDiasRestantes(expIso) < 0) {
-    return { ok: false, error: "Licença expirada", status: 400 };
+    return { ok: false, error: "LicenÃ§a expirada", status: 400 };
   }
 
   const machineCodeDb = String(data.machine_code || "").trim().toUpperCase();
   if (machineCodeDb && machineCodeDb !== codigoMaquina) {
-    return { ok: false, error: "Licença vinculada a outra máquina", status: 400 };
+    return { ok: false, error: "LicenÃ§a vinculada a outra mÃ¡quina", status: 400 };
   }
 
   const payloadUpdate = {
@@ -351,7 +432,7 @@ async function ativarLicencaSupabase(chave) {
     .eq("license_key", chave);
 
   if (updateError) {
-    return { ok: false, error: "Não foi possível ativar a licença", status: 500 };
+    return { ok: false, error: "NÃ£o foi possÃ­vel ativar a licenÃ§a", status: 500 };
   }
 
   await definirConfigValor("licenca_ativa", "1");
@@ -359,6 +440,12 @@ async function ativarLicencaSupabase(chave) {
   await definirConfigValor("licenca_cliente", String(data.client_name || "Cliente"));
   await definirConfigValor("licenca_expira_em", expIso);
   await definirConfigValor("licenca_ativada_em", new Date().toISOString());
+  await salvarCacheLicencaSupabase({
+    cliente: String(data.client_name || "Cliente"),
+    expiraEm: expIso,
+    codigoMaquina,
+    validadaEm: new Date().toISOString()
+  });
 
   return {
     ok: true,
@@ -409,7 +496,7 @@ app.use(async (req, res, next) => {
 
   if (req.path.startsWith("/api/")) {
     return res.status(403).json({
-      error: "Licença não ativada",
+      error: "LicenÃ§a nÃ£o ativada",
       codigo: "LICENCA_NAO_ATIVA",
       motivo: status.motivo
     });
@@ -422,7 +509,7 @@ app.use(async (req, res, next) => {
   return next();
 });
 
-// Protege a página de permissões no servidor (acesso direto por URL)
+// Protege a pÃ¡gina de permissÃµes no servidor (acesso direto por URL)
 app.get("/permissoes.html", (req, res) => {
   if (!req.session || !req.session.user) {
     return res.redirect("/login.html");
@@ -489,12 +576,269 @@ function normalizeText(value) {
   return value ? String(value).trim() : "";
 }
 
+function parseDeclaredXmlEncoding(buffer) {
+  const header = Buffer.from(buffer || []).subarray(0, 512).toString("ascii");
+  const match = header.match(/<\?xml[^>]*encoding=["']([^"']+)["']/i);
+  return match ? String(match[1]).trim().toLowerCase() : "";
+}
+
+function scoreDecodedText(text) {
+  const value = String(text || "");
+  const replacement = (value.match(/\uFFFD/g) || []).length;
+  const mojibake = (value.match(/Ãƒ.|Ã‚.|Ã¢â‚¬|Ã¢â‚¬Å“|Ã¢â‚¬Â|Ã¢â‚¬â„¢|Ã¢â‚¬Â¢/g) || []).length;
+  const controls = Array.from(value).filter((char) => {
+    const code = char.charCodeAt(0);
+    return (code >= 0 && code <= 8) || code === 11 || code === 12 || (code >= 14 && code <= 31);
+  }).length;
+  const accented = (value.match(/[\u00C0-\u017F]/g) || []).length;
+  return (replacement * 100) + (mojibake * 20) + (controls * 5) - accented;
+}
+
+function decodeTextBuffer(buffer, options = {}) {
+  const declaredXmlEncoding = options.xml ? parseDeclaredXmlEncoding(buffer) : "";
+  const encodings = [
+    declaredXmlEncoding,
+    "utf-8",
+    "windows-1252",
+    "iso-8859-1",
+    "latin1"
+  ].filter((value, index, list) => value && list.indexOf(value) === index);
+
+  let best = {
+    encoding: "utf-8",
+    text: Buffer.from(buffer || []).toString("utf8"),
+    score: Number.POSITIVE_INFINITY
+  };
+
+  encodings.forEach((encoding) => {
+    try {
+      const text = new TextDecoder(encoding, { fatal: false }).decode(buffer);
+      const score = scoreDecodedText(text);
+      if (score < best.score) {
+        best = { encoding, text, score };
+      }
+    } catch (_) {}
+  });
+
+  return {
+    encoding: best.encoding,
+    text: String(best.text || "").replace(/^\uFEFF/, "")
+  };
+}
+
+async function parseCsvRowsFromBuffer(buffer) {
+  const { text, encoding } = decodeTextBuffer(buffer);
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  const rows = await new Promise((resolve, reject) => {
+    const registros = [];
+    Readable.from([normalized])
+      .pipe(csv({ separator: ";" }))
+      .on("data", (data) => registros.push(data))
+      .on("end", () => resolve(registros))
+      .on("error", reject);
+  });
+
+  return { rows, encoding };
+}
+
+const CATEGORIAS_PADRAO = [
+  "Ferramenta manual",
+  "Ferramenta elÃ©trica",
+  "Ferramenta a bateria",
+  "Ferramenta pneumÃ¡tica",
+  "Ferramenta hidrÃ¡ulica",
+  "Ferramenta a combustÃ£o",
+  "Instrumento de mediÃ§Ã£o",
+  "EPI",
+  "AcessÃ³rio",
+  "ConsumÃ­vel",
+  "Limpeza e manutenÃ§Ã£o"
+];
+
+const LOCALIZACOES_PADRAO = [
+  "Ferramentaria",
+  "Almoxarifado",
+  "Sala PRZ",
+  "VeÃ­culo",
+  "Obra",
+  "Estoque externo"
+];
+
+let categoriasCustomizadas = [];
+let localizacoesCustomizadas = [];
+
+function listarCategoriasDisponiveis() {
+  return [...new Set([...CATEGORIAS_PADRAO, ...categoriasCustomizadas.map((item) => normalizeText(item)).filter(Boolean)])];
+}
+
+function parseCategoriasCustomizadas(rawValue) {
+  if (!rawValue) return [];
+  try {
+    const data = JSON.parse(String(rawValue));
+    if (!Array.isArray(data)) return [];
+    return [...new Set(data.map((item) => normalizeText(item)).filter(Boolean))];
+  } catch (_) {
+    return [];
+  }
+}
+
+function listarLocalizacoesDisponiveis() {
+  return [...new Set([...LOCALIZACOES_PADRAO, ...localizacoesCustomizadas.map((item) => normalizeText(item)).filter(Boolean)])];
+}
+
+function parseLocalizacoesCustomizadas(rawValue) {
+  if (!rawValue) return [];
+  try {
+    const data = JSON.parse(String(rawValue));
+    if (!Array.isArray(data)) return [];
+    return [...new Set(data.map((item) => normalizeText(item)).filter(Boolean))];
+  } catch (_) {
+    return [];
+  }
+}
+
+function normalizarTextoComparacao(value) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
+  const categoria = normalizeText(categoriaInformada);
+  const ferramenta = normalizeText(ferramentaInformada);
+  const categoriaBase = normalizarTextoComparacao(categoria);
+  const ferramentaBase = normalizarTextoComparacao(ferramenta);
+
+  const categoriaExistente = listarCategoriasDisponiveis().find(
+    (item) => normalizarTextoComparacao(item) === categoriaBase
+  );
+  if (categoriaExistente) return categoriaExistente;
+
+  if (
+    ferramentaBase.includes("multimetro") ||
+    ferramentaBase.includes("paquimetro") ||
+    ferramentaBase.includes("trena") ||
+    ferramentaBase.includes("medidor") ||
+    categoriaBase.includes("medic")
+  ) {
+    return "Instrumento de mediÃ§Ã£o";
+  }
+
+  if (
+    ferramentaBase.includes("bateria") ||
+    categoriaBase.includes("bateria")
+  ) {
+    return "Ferramenta a bateria";
+  }
+
+  if (
+    ferramentaBase.includes("pneumatic") ||
+    categoriaBase.includes("pneumatic")
+  ) {
+    return "Ferramenta pneumÃ¡tica";
+  }
+
+  if (ferramentaBase.includes("catraca") || categoriaBase.includes("catraca")) {
+    return "Ferramenta manual";
+  }
+
+  if (
+    ferramentaBase.includes("hidraulic") ||
+    categoriaBase.includes("hidraulic")
+  ) {
+    return "Ferramenta hidrÃ¡ulica";
+  }
+
+  if (
+    ferramentaBase.includes("gasolina") ||
+    ferramentaBase.includes("diesel") ||
+    ferramentaBase.includes("combust") ||
+    ferramentaBase.includes("motoserra") ||
+    ferramentaBase.includes("rocadeira") ||
+    categoriaBase.includes("gasolina") ||
+    categoriaBase.includes("diesel") ||
+    categoriaBase.includes("combust")
+  ) {
+    return "Ferramenta a combustÃ£o";
+  }
+
+  if (
+    ferramentaBase.includes("furadeira") ||
+    ferramentaBase.includes("parafusadeira") ||
+    ferramentaBase.includes("esmerilhadeira") ||
+    ferramentaBase.includes("serra") ||
+    ferramentaBase.includes("lixadeira") ||
+    ferramentaBase.includes("eletrica") ||
+    categoriaBase.includes("eletric")
+  ) {
+    return "Ferramenta elÃ©trica";
+  }
+
+  if (ferramentaBase.includes("epi") || categoriaBase === "epi") {
+    return "EPI";
+  }
+
+  if (
+    categoriaBase.includes("acessorio") ||
+    ferramentaBase.includes("adaptador") ||
+    ferramentaBase.includes("extensao") ||
+    ferramentaBase.includes("conector")
+  ) {
+    return "AcessÃ³rio";
+  }
+
+  if (
+    categoriaBase.includes("consumivel") ||
+    ferramentaBase.includes("lixa") ||
+    ferramentaBase.includes("disco") ||
+    ferramentaBase.includes("oleo") ||
+    ferramentaBase.includes("graxa")
+  ) {
+    return "ConsumÃ­vel";
+  }
+
+  if (
+    categoriaBase.includes("limpeza") ||
+    categoriaBase.includes("manutenc") ||
+    ferramentaBase.includes("desengripante") ||
+    ferramentaBase.includes("limpeza")
+  ) {
+    return "Limpeza e manutenÃ§Ã£o";
+  }
+
+  if (
+    ferramentaBase.startsWith("alicate") ||
+    categoriaBase.includes("alicate") ||
+    ferramentaBase.includes("chave") ||
+    ferramentaBase.includes("soquete") ||
+    ferramentaBase.includes("cachimbo") ||
+    categoriaBase === "manual" ||
+    categoriaBase.includes("chave")
+  ) {
+    return "Ferramenta manual";
+  }
+
+  return "AcessÃ³rio";
+}
+
+async function normalizarCategoriasExistentes() {
+  const itensExistentes = await allQuery(`SELECT id, ferramenta, categoria FROM itens`);
+  for (const item of itensExistentes) {
+    const categoriaNova = categoriaPadronizada(item.categoria, item.ferramenta);
+    if (normalizeText(item.categoria) !== categoriaNova) {
+      await runQuery(`UPDATE itens SET categoria = ? WHERE id = ?`, [categoriaNova, item.id]);
+    }
+  }
+}
+
 function validarSenhaForte(senha) {
   const texto = String(senha || "");
   if (texto.length < 8) return "Senha deve ter ao menos 8 caracteres";
-  if (!/[A-Z]/.test(texto)) return "Senha deve conter ao menos 1 letra maiúscula";
-  if (!/[a-z]/.test(texto)) return "Senha deve conter ao menos 1 letra minúscula";
-  if (!/[0-9]/.test(texto)) return "Senha deve conter ao menos 1 número";
+  if (!/[A-Z]/.test(texto)) return "Senha deve conter ao menos 1 letra maiÃºscula";
+  if (!/[a-z]/.test(texto)) return "Senha deve conter ao menos 1 letra minÃºscula";
+  if (!/[0-9]/.test(texto)) return "Senha deve conter ao menos 1 nÃºmero";
   if (!/[^A-Za-z0-9]/.test(texto)) return "Senha deve conter ao menos 1 caractere especial";
   return null;
 }
@@ -563,22 +907,18 @@ async function criarConfiguracaoSeNaoExistir(chave, valor) {
   }
 }
 
-async function gerarCodigoAutomatico(codigoInformado) {
-  const codigoManual = normalizeText(codigoInformado);
+const ITEM_CODE_PREFIX = "PRZ";
+const ALMOX_ITEM_CODE_PREFIX = "ALM";
 
-  if (codigoManual) {
-    const existente = await getQuery(
-      `SELECT id FROM itens WHERE codigo = ?`,
-      [codigoManual]
-    );
+function formatarCodigoItem(numero) {
+  return `${ITEM_CODE_PREFIX}-${String(numero).padStart(4, "0")}`;
+}
 
-    if (existente) {
-      throw new Error(`O código "${codigoManual}" já existe.`);
-    }
+function formatarCodigoAlmoxItem(numero) {
+  return `${ALMOX_ITEM_CODE_PREFIX}-${String(numero).padStart(4, "0")}`;
+}
 
-    return codigoManual;
-  }
-
+async function gerarCodigoAutomatico() {
   await criarConfiguracaoSeNaoExistir("sequencia_codigo_item", "1");
 
   const seq = await getQuery(
@@ -592,7 +932,7 @@ async function gerarCodigoAutomatico(codigoInformado) {
   let encontrouLivre = false;
 
   while (!encontrouLivre) {
-    codigoFinal = `FER-${String(numeroAtual).padStart(4, "0")}`;
+    codigoFinal = formatarCodigoItem(numeroAtual);
 
     const existente = await getQuery(
       `SELECT id FROM itens WHERE codigo = ?`,
@@ -616,15 +956,87 @@ async function gerarCodigoAutomatico(codigoInformado) {
   return codigoFinal;
 }
 
+async function gerarCodigoAutomaticoAlmox() {
+  await criarConfiguracaoSeNaoExistir("sequencia_codigo_almox_item", "1");
+
+  const seq = await getQuery(
+    `SELECT valor FROM configuracoes WHERE chave = 'sequencia_codigo_almox_item'`
+  );
+
+  let numeroAtual = seq ? Number(seq.valor) : 1;
+  if (!Number.isFinite(numeroAtual) || numeroAtual < 1) numeroAtual = 1;
+
+  let codigoDisponivel = false;
+
+  while (!codigoDisponivel) {
+    const codigoFinal = formatarCodigoAlmoxItem(numeroAtual);
+    const existente = await getQuery(
+      `SELECT id FROM almoxarifado_itens WHERE codigo = ?`,
+      [codigoFinal]
+    );
+
+    if (!existente) {
+      codigoDisponivel = true;
+      await runQuery(
+        `UPDATE configuracoes
+         SET valor = ?
+         WHERE chave = 'sequencia_codigo_almox_item'`,
+        [numeroAtual + 1]
+      );
+      return codigoFinal;
+    }
+
+    numeroAtual++;
+  }
+}
+
+async function validarCodigoDisponivelParaItem(codigoInformado, itemIdAtual = null) {
+  const codigoFinal = normalizeText(codigoInformado);
+  if (!codigoFinal) {
+    throw new Error("O cÃ³digo do item Ã© obrigatÃ³rio");
+  }
+
+  const existente = await getQuery(
+    `SELECT id FROM itens WHERE codigo = ?`,
+    [codigoFinal]
+  );
+
+  if (existente && Number(existente.id) !== Number(itemIdAtual)) {
+    throw new Error(`O cÃ³digo "${codigoFinal}" jÃ¡ existe.`);
+  }
+
+  return codigoFinal;
+}
+
 async function obterEstoqueAtual(itemId) {
   const item = await getQuery(
     `
     SELECT
       i.id,
+      COALESCE(i.quantidade_total, 0) +
       COALESCE(SUM(CASE WHEN m.tipo = 'ENTRADA' THEN m.quantidade ELSE 0 END), 0) -
       COALESCE(SUM(CASE WHEN m.tipo = 'SAIDA' THEN m.quantidade ELSE 0 END), 0) AS estoque_atual
     FROM itens i
     LEFT JOIN movimentacoes m ON m.item_id = i.id
+    WHERE i.id = ?
+    GROUP BY i.id
+    `,
+    [itemId]
+  );
+
+  return item ? Number(item.estoque_atual) : 0;
+}
+
+async function obterEstoqueAtualAlmox(itemId) {
+  const item = await getQuery(
+    `
+    SELECT
+      i.id,
+      COALESCE(i.quantidade_total, 0) +
+      COALESCE(SUM(CASE WHEN m.tipo = 'ENTRADA' THEN m.quantidade ELSE 0 END), 0) -
+      COALESCE(SUM(CASE WHEN m.tipo = 'SAIDA' THEN m.quantidade ELSE 0 END), 0) AS estoque_atual
+    FROM almoxarifado_itens i
+    LEFT JOIN almoxarifado_movimentacoes m ON m.item_id = i.id
     WHERE i.id = ?
     GROUP BY i.id
     `,
@@ -640,7 +1052,7 @@ function deletarArquivoSeExistir(caminho) {
       fs.unlinkSync(caminho);
     }
   } catch (e) {
-    console.error("Erro ao remover arquivo temporário:", e.message);
+    console.error("Erro ao remover arquivo temporÃ¡rio:", e.message);
   }
 }
 
@@ -670,6 +1082,18 @@ async function definirConfigValor(chave, valor) {
      ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`,
     [chave, String(valor)]
   );
+}
+
+async function carregarCategoriasCustomizadas() {
+  const rawValue = await obterConfigValor("categorias_customizadas", "[]");
+  categoriasCustomizadas = parseCategoriasCustomizadas(rawValue);
+  return listarCategoriasDisponiveis();
+}
+
+async function carregarLocalizacoesCustomizadas() {
+  const rawValue = await obterConfigValor("localizacoes_customizadas", "[]");
+  localizacoesCustomizadas = parseLocalizacoesCustomizadas(rawValue);
+  return listarLocalizacoesDisponiveis();
 }
 
 async function listarArquivosBackup() {
@@ -796,6 +1220,192 @@ function decodeXmlEntities(text) {
     .replace(/&amp;/g, "&");
 }
 
+async function gerarPdfInventario(itens) {
+  const totalCategorias = new Set(itens.map((item) => String(item.categoria || "").trim()).filter(Boolean)).size;
+  const dataGeracao = new Date().toLocaleString("pt-BR");
+  const fontesRegulares = [
+    "C:\\Windows\\Fonts\\arial.ttf",
+    "C:\\Windows\\Fonts\\calibri.ttf",
+    "C:\\Windows\\Fonts\\segoeui.ttf"
+  ];
+  const fontesBold = [
+    "C:\\Windows\\Fonts\\arialbd.ttf",
+    "C:\\Windows\\Fonts\\calibrib.ttf",
+    "C:\\Windows\\Fonts\\segoeuib.ttf"
+  ];
+  const fonteRegular = fontesRegulares.find((fonte) => fs.existsSync(fonte));
+  const fonteBold = fontesBold.find((fonte) => fs.existsSync(fonte)) || fonteRegular;
+
+  if (!fonteRegular) {
+    throw new Error("Nenhuma fonte TTF compatÃ­vel foi encontrada para gerar o PDF.");
+  }
+
+  const doc = new PDFDocument({
+    size: "A4",
+    layout: "landscape",
+    margin: 26,
+    bufferPages: true
+  });
+
+  const buffers = [];
+  doc.on("data", (chunk) => buffers.push(chunk));
+
+  const fim = new Promise((resolve, reject) => {
+    doc.on("end", () => resolve(Buffer.concat(buffers)));
+    doc.on("error", reject);
+  });
+
+  doc.registerFont("uniqstock-regular", fonteRegular);
+  doc.registerFont("uniqstock-bold", fonteBold);
+
+  const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
+  const margin = 26;
+  const startY = 36;
+  const tableX = margin;
+  const colunas = [
+    { key: "codigo", label: "CÃ³digo", width: 74, align: "left" },
+    { key: "ferramenta", label: "Ferramenta", width: 194, align: "left" },
+    { key: "categoria", label: "Categoria", width: 112, align: "left" },
+    { key: "marca_modelo", label: "Marca / Modelo", width: 128, align: "left" },
+    { key: "quantidade_total", label: "Qtd.", width: 42, align: "right" },
+    { key: "localizacao", label: "LocalizaÃ§Ã£o", width: 136, align: "left" },
+    { key: "estado_inicial", label: "Estado", width: 84, align: "left" }
+  ];
+  const tableWidth = colunas.reduce((sum, col) => sum + col.width, 0);
+  const rowHeight = 22;
+  const headerRowY = 178;
+  const footerY = pageHeight - margin - 16;
+
+  function drawHeader(paginaAtual, totalPaginas) {
+    doc.save();
+    doc.roundedRect(margin, startY, pageWidth - margin * 2, 72, 16).fill("#111827");
+    doc.rect(margin, startY + 68, pageWidth - margin * 2, 4).fill("#d90404");
+
+    doc.fillColor("#ffffff").font("uniqstock-bold").fontSize(23)
+      .text("UniqStock | RelatÃ³rio de InventÃ¡rio", margin + 18, startY + 14, { lineBreak: false });
+
+    doc.fillColor("#dbe7f3").font("uniqstock-regular").fontSize(10)
+      .text(`Gerado em ${dataGeracao}`, margin + 18, startY + 48, { lineBreak: false });
+    doc.restore();
+
+    const cards = [
+      { x: margin, title: "Itens no relatÃ³rio", value: String(itens.length) },
+      { x: margin + 192, title: "Categorias", value: String(totalCategorias) },
+      { x: margin + 384, title: "PÃ¡gina", value: `${paginaAtual}/${totalPaginas}` }
+    ];
+
+    cards.forEach((card) => {
+      doc.save();
+      doc.roundedRect(card.x, 126, 178, 42, 12).fillAndStroke("#f8fafc", "#d7e0ea");
+      doc.fillColor("#64748b").font("uniqstock-regular").fontSize(9)
+        .text(card.title, card.x + 12, 136, { lineBreak: false });
+      doc.fillColor("#0f172a").font("uniqstock-bold").fontSize(15)
+        .text(card.value, card.x + 12, 150, { lineBreak: false });
+      doc.restore();
+    });
+  }
+
+  function drawTableHeader() {
+    doc.save();
+    doc.rect(tableX, headerRowY, tableWidth, rowHeight).fill("#eef2f7");
+    let x = tableX;
+    colunas.forEach((col) => {
+      doc.fillColor("#0f172a").font("uniqstock-bold").fontSize(9)
+        .text(col.label, x + 6, headerRowY + 7, { width: col.width - 12, align: col.align });
+      x += col.width;
+    });
+    doc.restore();
+  }
+
+  function sanitizeText(value) {
+    return String(value ?? "")
+      .replace(/\u00A0/g, " ")
+      .replace(/\r/g, " ")
+      .replace(/\n/g, " ")
+      .normalize("NFC")
+      .trim();
+  }
+
+  function drawRow(item, rowIndex, y) {
+    if (rowIndex % 2 === 0) {
+      doc.save();
+      doc.rect(tableX, y, tableWidth, rowHeight).fill("#fbfcfd");
+      doc.restore();
+    }
+
+    let x = tableX;
+    colunas.forEach((col) => {
+      const texto = sanitizeText(item[col.key] ?? "-");
+      doc.fillColor("#1f2937").font("uniqstock-regular").fontSize(8.5)
+        .text(texto, x + 6, y + 7, {
+          width: col.width - 12,
+          align: col.align,
+          ellipsis: true,
+          lineBreak: false
+        });
+      x += col.width;
+    });
+
+    doc.save();
+    doc.strokeColor("#d7e0ea").lineWidth(0.5);
+    doc.moveTo(tableX, y + rowHeight).lineTo(tableX + tableWidth, y + rowHeight).stroke();
+    doc.restore();
+  }
+
+  function drawColumnLines(lastY) {
+    let x = tableX;
+    doc.save();
+    doc.strokeColor("#d7e0ea").lineWidth(0.5);
+    doc.rect(tableX, headerRowY, tableWidth, lastY - headerRowY).stroke();
+    colunas.forEach((col) => {
+      x += col.width;
+      doc.moveTo(x, headerRowY).lineTo(x, lastY).stroke();
+    });
+    doc.restore();
+  }
+
+  function drawFooter(paginaAtual, totalPaginas) {
+    doc.save();
+    doc.fillColor("#64748b").font("uniqstock-regular").fontSize(8)
+      .text("UniqStock | Software de GestÃ£o de Estoque", margin, footerY, { lineBreak: false });
+    doc.text(`PÃ¡gina ${paginaAtual} de ${totalPaginas}`, pageWidth - margin - 80, footerY, {
+      width: 80,
+      align: "right",
+      lineBreak: false
+    });
+    doc.restore();
+  }
+
+  const linhasPorPagina = 16;
+  const totalPaginas = Math.max(1, Math.ceil(itens.length / linhasPorPagina));
+
+  for (let pagina = 0; pagina < totalPaginas; pagina++) {
+    if (pagina > 0) doc.addPage();
+    drawHeader(pagina + 1, totalPaginas);
+    drawTableHeader();
+
+    const inicio = pagina * linhasPorPagina;
+    const paginaItens = itens.slice(inicio, inicio + linhasPorPagina);
+    let y = headerRowY + rowHeight;
+
+    paginaItens.forEach((item, idx) => {
+      drawRow(item, idx, y);
+      y += rowHeight;
+    });
+
+    drawColumnLines(y);
+  }
+
+  for (let pagina = 0; pagina < totalPaginas; pagina++) {
+    doc.switchToPage(pagina);
+    drawFooter(pagina + 1, totalPaginas);
+  }
+
+  doc.end();
+  return fim;
+}
+
 function normalizeXmlTagName(tagName) {
   return String(tagName || "").split(":").pop().trim().toLowerCase();
 }
@@ -809,7 +1419,7 @@ function parseXmlRegistroFields(xmlTrecho) {
     const tag = normalizeXmlTagName(match[1]);
     const valorBruto = String(match[2] ?? "");
 
-    // Evita nós complexos aninhados para manter parser simples e previsível.
+    // Evita nÃ³s complexos aninhados para manter parser simples e previsÃ­vel.
     if (/<[a-zA-Z_][\w:.-]*\b[^>]*>/.test(valorBruto)) continue;
 
     resultado[tag] = decodeXmlEntities(valorBruto).trim();
@@ -910,7 +1520,7 @@ async function importarLinhasNoBanco(linhas) {
     }
 
     try {
-      const codigoFinal = await gerarCodigoAutomatico(linha.codigo);
+      const codigoFinal = await gerarCodigoAutomatico();
 
       await runQuery(
         `INSERT INTO itens (
@@ -949,200 +1559,113 @@ async function importarLinhasNoBanco(linhas) {
   return relatorio;
 }
 
+async function importarLinhasNoAlmoxarifado(linhas) {
+  const relatorio = {
+    total_recebido: Array.isArray(linhas) ? linhas.length : 0,
+    total_importado: 0,
+    total_ignorado: 0,
+    total_erros: 0,
+    ignorados: [],
+    erros: []
+  };
+
+  for (let i = 0; i < (linhas || []).length; i++) {
+    const linhaBruta = linhas[i];
+    const numeroLinha = i + 2;
+    const linha = normalizarLinhaImportacao(linhaBruta);
+
+    if (!linhaTemConteudo(linha)) {
+      relatorio.total_ignorado++;
+      relatorio.ignorados.push({ linha: numeroLinha, motivo: "Linha vazia" });
+      continue;
+    }
+
+    const nomeFerramenta = normalizeText(linha.ferramenta);
+    if (!nomeFerramenta) {
+      relatorio.total_ignorado++;
+      relatorio.ignorados.push({ linha: numeroLinha, motivo: "Campo ferramenta/nome ausente" });
+      continue;
+    }
+
+    try {
+      const codigoFinal = await gerarCodigoAutomaticoAlmox();
+      await runQuery(
+        `INSERT INTO almoxarifado_itens (
+          codigo,
+          ferramenta,
+          categoria,
+          marca_modelo,
+          quantidade_total,
+          unidade_medida,
+          embalagem,
+          estoque_minimo,
+          fornecedor,
+          localizacao,
+          estado_inicial,
+          observacao
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          codigoFinal,
+          nomeFerramenta,
+          categoriaPadronizada(linha.categoria, nomeFerramenta),
+          normalizeText(linha.marca_modelo),
+          parseNumero(linha.quantidade_total),
+          normalizeText(linha.unidade_medida || "un"),
+          normalizeText(linha.embalagem),
+          parseNumero(linha.estoque_minimo),
+          normalizeText(linha.fornecedor),
+          normalizeText(linha.localizacao),
+          normalizeText(linha.estado_inicial),
+          normalizeText(linha.observacao)
+        ]
+      );
+
+      relatorio.total_importado++;
+    } catch (erro) {
+      relatorio.total_erros++;
+      relatorio.erros.push({
+        linha: numeroLinha,
+        codigo: normalizeText(linha.codigo),
+        mensagem: String(erro?.message || "Erro ao importar linha")
+      });
+    }
+  }
+
+  return relatorio;
+}
+
 // =========================
-// CRIAÇÃO DAS TABELAS
+// CRIA??O DAS TABELAS
 // =========================
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      usuario TEXT UNIQUE,
-      senha TEXT,
-      perfil TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS itens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      codigo TEXT UNIQUE,
-      ferramenta TEXT NOT NULL,
-      categoria TEXT,
-      marca_modelo TEXT,
-      quantidade_total REAL DEFAULT 0,
-      localizacao TEXT,
-      estado_inicial TEXT,
-      observacao TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS configuracoes (
-      chave TEXT PRIMARY KEY,
-      valor TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS obras (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nome TEXT,
-      responsavel TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS funcionarios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nome TEXT,
-      matricula TEXT,
-      funcao TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS movimentacoes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      data TEXT DEFAULT (datetime('now', 'localtime')),
-      item_id INTEGER NOT NULL,
-      tipo TEXT CHECK(tipo IN ('ENTRADA','SAIDA')) NOT NULL,
-      quantidade REAL NOT NULL,
-      obra TEXT,
-      funcionario TEXT,
-      observacao TEXT,
-      FOREIGN KEY(item_id) REFERENCES itens(id)
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS permissoes_usuarios (
-      user_id INTEGER PRIMARY KEY,
-      ver_dashboard INTEGER DEFAULT 1,
-      ver_inventario INTEGER DEFAULT 1,
-      criar_editar_itens INTEGER DEFAULT 0,
-      ver_etiquetas INTEGER DEFAULT 1,
-      usar_scanner INTEGER DEFAULT 1,
-      ver_movimentacoes INTEGER DEFAULT 1,
-      registrar_movimentacao INTEGER DEFAULT 0,
-      importar_exportar INTEGER DEFAULT 0,
-      gerenciar_usuarios INTEGER DEFAULT 0,
-      FOREIGN KEY(user_id) REFERENCES usuarios(id)
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS auditoria_acoes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      data TEXT DEFAULT (datetime('now', 'localtime')),
-      usuario TEXT,
-      acao TEXT NOT NULL,
-      entidade TEXT NOT NULL,
-      entidade_id INTEGER,
-      detalhes TEXT
-    )
-  `);
-
-  // Migração: preenche entidade_id de logs antigos de login usando o id do usuário.
-  db.run(
-    `
-    UPDATE auditoria_acoes
-    SET entidade_id = (
-      SELECT u.id
-      FROM usuarios u
-      WHERE u.usuario = auditoria_acoes.usuario
-      LIMIT 1
-    )
-    WHERE entidade = 'auth'
-      AND acao LIKE 'LOGIN_%'
-      AND (entidade_id IS NULL OR entidade_id = '')
-      AND EXISTS (
-        SELECT 1
-        FROM usuarios u2
-        WHERE u2.usuario = auditoria_acoes.usuario
-      )
-    `,
-    [],
-    function (err) {
-      if (err) {
-        console.error("Erro na migração de auditoria de login:", err.message);
-        return;
-      }
-      if (this?.changes > 0) {
-        console.log(`Migração auditoria login: ${this.changes} registro(s) atualizados.`);
-      }
-    }
-  );
-
-  db.get(
-    `SELECT valor FROM configuracoes WHERE chave = 'sequencia_codigo_item'`,
-    (err, row) => {
-      if (err) {
-        console.error("Erro ao verificar sequência de código:", err.message);
-        return;
-      }
-
-      if (!row) {
-        db.run(
-          `INSERT INTO configuracoes (chave, valor) VALUES (?, ?)`,
-          ["sequencia_codigo_item", "1"]
-        );
-      }
-    }
-  );
-
-  db.run(
-    `INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES
-      ('backup_auto_habilitado', '1'),
-      ('backup_auto_horario', '02:00'),
-      ('backup_reter_dias', '15'),
-      ('licenca_ativa', '0'),
-      ('licenca_chave', ''),
-      ('licenca_cliente', ''),
-      ('licenca_expira_em', ''),
-      ('licenca_ativada_em', '')`
-  );
-
-  db.get(
-    `SELECT * FROM usuarios WHERE usuario = ?`,
-    ["admin"],
-    (err, row) => {
-      if (err) {
-        console.error("Erro ao verificar usuário admin:", err.message);
-        return;
-      }
-
-      if (!row) {
-        db.run(
-          `INSERT INTO usuarios (usuario, senha, perfil) VALUES (?, ?, ?)`,
-          ["admin", "admin123", "admin"],
-          (insertErr) => {
-            if (insertErr) {
-              console.error("Erro ao criar usuário admin:", insertErr.message);
-              return;
-            }
-            console.log("Usuário admin criado: admin / admin123");
-            db.get(`SELECT id FROM usuarios WHERE usuario = ?`, ["admin"], (e2, r2) => {
-              if (e2 || !r2) return;
-              db.run(
-                `INSERT OR IGNORE INTO permissoes_usuarios (
-                  user_id, ver_dashboard, ver_inventario, criar_editar_itens, ver_etiquetas,
-                  usar_scanner, ver_movimentacoes, registrar_movimentacao, importar_exportar, gerenciar_usuarios
-                ) VALUES (?, 1, 1, 1, 1, 1, 1, 1, 1, 1)`,
-                [r2.id]
-              );
-            });
-          }
-        );
-      }
-    }
-  );
+initDatabaseSchema(db).catch((erro) => {
+  console.error("Erro ao inicializar schema do banco:", erro.message);
 });
+
+setTimeout(async () => {
+  try {
+    await carregarCategoriasCustomizadas();
+  } catch (erro) {
+    console.error("Erro ao carregar categorias customizadas:", erro.message);
+  }
+
+  try {
+    await carregarLocalizacoesCustomizadas();
+  } catch (erro) {
+    console.error("Erro ao carregar localizacoes customizadas:", erro.message);
+  }
+
+  try {
+    await normalizarCategoriasExistentes();
+  } catch (erro) {
+    console.error("Erro ao normalizar categorias existentes:", erro.message);
+  }
+}, 300);
 
 // =========================
 // API: STATUS
 // =========================
 app.get("/api/status", (req, res) => {
-  res.json({ ok: true, mensagem: "Servidor funcionando" });
+  res.json({ ok: true, mensagem: "Servidor funcionando", db_client: DB_CLIENT });
 });
 
 app.get("/api/app/version", (req, res) => {
@@ -1151,7 +1674,7 @@ app.get("/api/app/version", (req, res) => {
 
 async function obterReleaseAtualizacao(version = "") {
   if (!USE_SUPABASE_LICENSE || !supabase) {
-    return { ok: false, status: 503, error: "Atualização remota indisponível (Supabase não configurado)" };
+    return { ok: false, status: 503, error: "AtualizaÃ§Ã£o remota indisponÃ­vel (Supabase nÃ£o configurado)" };
   }
 
   let query = supabase
@@ -1181,7 +1704,7 @@ app.get("/api/app/update-check", async (req, res) => {
   try {
     const current = normalizeText(req.query.current || "");
     if (!current) {
-      return res.status(400).json({ error: "Informe a versão atual em ?current=" });
+      return res.status(400).json({ error: "Informe a versÃ£o atual em ?current=" });
     }
 
     const releaseResult = await obterReleaseAtualizacao();
@@ -1195,7 +1718,7 @@ app.get("/api/app/update-check", async (req, res) => {
         });
       }
       return res.status(releaseResult.status || 500).json({
-        error: releaseResult.error || "Erro ao consultar atualização",
+        error: releaseResult.error || "Erro ao consultar atualizaÃ§Ã£o",
         detalhe: releaseResult.detalhe
       });
     }
@@ -1267,7 +1790,7 @@ app.post("/api/licenca/ativar", async (req, res) => {
   try {
     const chave = normalizeText(req.body?.chave);
     if (!chave) {
-      return res.status(400).json({ error: "Informe a chave de ativação" });
+      return res.status(400).json({ error: "Informe a chave de ativaÃ§Ã£o" });
     }
 
     const resultado = USE_SUPABASE_LICENSE
@@ -1294,11 +1817,11 @@ app.post("/api/cadastro", requireAdmin, async (req, res) => {
     const senha = normalizeText(req.body.senha);
 
     if (!usuario || !senha) {
-      return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
+      return res.status(400).json({ error: "UsuÃ¡rio e senha sÃ£o obrigatÃ³rios" });
     }
 
     if (usuario.length < 3) {
-      return res.status(400).json({ error: "Usuário deve ter ao menos 3 caracteres" });
+      return res.status(400).json({ error: "UsuÃ¡rio deve ter ao menos 3 caracteres" });
     }
 
     const erroSenha = validarSenhaForte(senha);
@@ -1308,7 +1831,7 @@ app.post("/api/cadastro", requireAdmin, async (req, res) => {
 
     const existente = await getQuery(`SELECT id FROM usuarios WHERE usuario = ?`, [usuario]);
     if (existente) {
-      return res.status(400).json({ error: "Usuário já existe" });
+      return res.status(400).json({ error: "UsuÃ¡rio jÃ¡ existe" });
     }
 
     const hash = await bcrypt.hash(senha, 10);
@@ -1319,9 +1842,9 @@ app.post("/api/cadastro", requireAdmin, async (req, res) => {
 
     await runQuery(
       `INSERT OR IGNORE INTO permissoes_usuarios (
-        user_id, ver_dashboard, ver_inventario, criar_editar_itens, ver_etiquetas,
+        user_id, ver_dashboard, ver_inventario, criar_editar_itens, criar_itens, editar_itens, excluir_itens, ver_etiquetas,
         usar_scanner, ver_movimentacoes, registrar_movimentacao, importar_exportar, gerenciar_usuarios
-      ) VALUES (?, 1, 1, 0, 1, 1, 1, 0, 0, 0)`,
+      ) VALUES (?, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0)`,
       [result.id]
     );
 
@@ -1338,7 +1861,7 @@ app.post("/api/login", async (req, res) => {
   const statusLicenca = await obterStatusLicenca();
   if (!statusLicenca.ativa) {
     return res.status(403).json({
-      error: "Licença não ativada. Ative o sistema para continuar.",
+      error: "LicenÃ§a nÃ£o ativada. Ative o sistema para continuar.",
       codigo: "LICENCA_NAO_ATIVA",
       motivo: statusLicenca.motivo
     });
@@ -1348,7 +1871,7 @@ app.post("/api/login", async (req, res) => {
   const senha = normalizeText(req.body.senha);
 
   if (!usuario || !senha) {
-    return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
+    return res.status(400).json({ error: "UsuÃ¡rio e senha sÃ£o obrigatÃ³rios" });
   }
 
   try {
@@ -1363,7 +1886,7 @@ app.post("/api/login", async (req, res) => {
         motivo: "usuario_nao_encontrado",
         ip: req.ip
       }, usuario || "desconhecido");
-      return res.status(401).json({ error: "Usuário não encontrado" });
+      return res.status(401).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
     }
 
     const isHash = typeof user.senha === "string" && user.senha.startsWith("$2");
@@ -1395,10 +1918,10 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// Sessão: usuário atual
+// SessÃ£o: usuÃ¡rio atual
 app.get("/api/me", (req, res) => {
   if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "Não autenticado" });
+    return res.status(401).json({ error: "NÃ£o autenticado" });
   }
   res.json({ ok: true, user: req.session.user });
 });
@@ -1412,14 +1935,14 @@ app.post("/api/logout", (req, res) => {
 
 function requireAuth(req, res, next) {
   if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "Não autenticado" });
+    return res.status(401).json({ error: "NÃ£o autenticado" });
   }
   next();
 }
 
 function requireAdmin(req, res, next) {
   if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "Não autenticado" });
+    return res.status(401).json({ error: "NÃ£o autenticado" });
   }
   if (req.session.user.perfil !== "admin") {
     return res.status(403).json({ error: "Acesso negado" });
@@ -1432,16 +1955,16 @@ async function getUserPerms(usuario) {
   if (!user) return null;
   const perms = await getQuery(`SELECT * FROM permissoes_usuarios WHERE user_id = ?`, [user.id]);
   if (perms) return { user, perms };
-  // criar padrão conforme perfil
+  // criar padrÃ£o conforme perfil
   const isAdmin = user.perfil === "admin";
   await runQuery(
     `INSERT OR IGNORE INTO permissoes_usuarios (
-      user_id, ver_dashboard, ver_inventario, criar_editar_itens, ver_etiquetas,
+      user_id, ver_dashboard, ver_inventario, criar_editar_itens, criar_itens, editar_itens, excluir_itens, ver_etiquetas,
       usar_scanner, ver_movimentacoes, registrar_movimentacao, importar_exportar, gerenciar_usuarios
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       user.id,
-      1, 1, isAdmin ? 1 : 0, 1,
+      1, 1, isAdmin ? 1 : 0, isAdmin ? 1 : 0, isAdmin ? 1 : 0, isAdmin ? 1 : 0, 1,
       1, 1, isAdmin ? 1 : 0, isAdmin ? 1 : 0, isAdmin ? 1 : 0
     ]
   );
@@ -1452,7 +1975,7 @@ async function getUserPerms(usuario) {
 app.get("/api/minhas-permissoes", requireAuth, async (req, res) => {
   try {
     const info = await getUserPerms(req.session.user.usuario);
-    if (!info) return res.status(404).json({ error: "Usuário não encontrado" });
+    if (!info) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
     res.json({
       ok: true,
       perfil: info.user.perfil,
@@ -1466,14 +1989,14 @@ app.get("/api/minhas-permissoes", requireAuth, async (req, res) => {
 function requirePerm(permissao) {
   return async function (req, res, next) {
     if (!req.session || !req.session.user) {
-      return res.status(401).json({ error: "Não autenticado" });
+      return res.status(401).json({ error: "NÃ£o autenticado" });
     }
     try {
       const info = await getUserPerms(req.session.user.usuario);
-      if (!info) return res.status(401).json({ error: "Não autenticado" });
+      if (!info) return res.status(401).json({ error: "NÃ£o autenticado" });
       if (info.user.perfil === "admin") return next();
       if (info.perms && info.perms[permissao] === 1) return next();
-      return res.status(403).json({ error: "Permissão negada" });
+      return res.status(403).json({ error: "PermissÃ£o negada" });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -1494,7 +2017,7 @@ async function registrarAuditoria(req, acao, entidade, entidadeId = null, detalh
   }
 }
 
-// Alterar senha (usuário logado)
+// Alterar senha (usuÃ¡rio logado)
 app.post("/api/alterar-senha", requireAuth, async (req, res) => {
   try {
     const usuarioSessao = req.session.user.usuario;
@@ -1505,7 +2028,7 @@ app.post("/api/alterar-senha", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Informe senha atual e nova" });
     }
     const user = await getQuery(`SELECT * FROM usuarios WHERE usuario = ?`, [usuarioSessao]);
-    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    if (!user) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
     const isHash = typeof user.senha === "string" && user.senha.startsWith("$2");
     const senhaOk = isHash ? await bcrypt.compare(atual, user.senha) : user.senha === atual;
     if (!senhaOk) return res.status(401).json({ error: "Senha atual incorreta" });
@@ -1519,7 +2042,7 @@ app.post("/api/alterar-senha", requireAuth, async (req, res) => {
   }
 });
 
-// Resetar senha (admin escolhe usuário)
+// Resetar senha (admin escolhe usuÃ¡rio)
 app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -1529,7 +2052,7 @@ app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
     const erroSenha = validarSenhaForte(nova);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
     const user = await getQuery(`SELECT * FROM usuarios WHERE id = ?`, [id]);
-    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    if (!user) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
     if (user.usuario === "admin") {
       return res.status(400).json({ error: "Use outro admin para alterar a senha do admin" });
     }
@@ -1540,7 +2063,7 @@ app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-// Gestão de usuários (admin)
+// GestÃ£o de usuÃ¡rios (admin)
 app.get("/api/usuarios", requireAdmin, async (req, res) => {
   try {
     const rows = await allQuery(`SELECT id, usuario, perfil FROM usuarios ORDER BY usuario`);
@@ -1557,14 +2080,14 @@ app.post("/api/usuarios", requireAdmin, async (req, res) => {
     const perfil = normalizeText(req.body.perfil || "operador");
 
     if (!usuario || !senha) {
-      return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
+      return res.status(400).json({ error: "UsuÃ¡rio e senha sÃ£o obrigatÃ³rios" });
     }
     const erroSenha = validarSenhaForte(senha);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
 
     const existente = await getQuery(`SELECT id FROM usuarios WHERE usuario = ?`, [usuario]);
     if (existente) {
-      return res.status(400).json({ error: "Usuário já existe" });
+      return res.status(400).json({ error: "UsuÃ¡rio jÃ¡ existe" });
     }
 
     const hash = await bcrypt.hash(senha, 10);
@@ -1578,12 +2101,12 @@ app.post("/api/usuarios", requireAdmin, async (req, res) => {
     const isAdmin = (perfil === "admin");
     await runQuery(
       `INSERT OR IGNORE INTO permissoes_usuarios (
-        user_id, ver_dashboard, ver_inventario, criar_editar_itens, ver_etiquetas,
+        user_id, ver_dashboard, ver_inventario, criar_editar_itens, criar_itens, editar_itens, excluir_itens, ver_etiquetas,
         usar_scanner, ver_movimentacoes, registrar_movimentacao, importar_exportar, gerenciar_usuarios
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        1, 1, isAdmin ? 1 : 0, 1,
+        1, 1, isAdmin ? 1 : 0, isAdmin ? 1 : 0, isAdmin ? 1 : 0, isAdmin ? 1 : 0, 1,
         1, 1, isAdmin ? 1 : 0, isAdmin ? 1 : 0, isAdmin ? 1 : 0
       ]
     );
@@ -1598,9 +2121,9 @@ app.delete("/api/usuarios/:id", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const user = await getQuery(`SELECT * FROM usuarios WHERE id = ?`, [id]);
-    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    if (!user) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
     if (user.usuario === "admin") {
-      return res.status(400).json({ error: "Não é permitido remover o usuário admin" });
+      return res.status(400).json({ error: "NÃ£o Ã© permitido remover o usuÃ¡rio admin" });
     }
     await runQuery(`DELETE FROM usuarios WHERE id = ?`, [id]);
     res.json({ ok: true });
@@ -1609,12 +2132,12 @@ app.delete("/api/usuarios/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// Permissões: obter e atualizar
+// PermissÃµes: obter e atualizar
 app.get("/api/usuarios/:id/permissoes", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const perms = await getQuery(`SELECT * FROM permissoes_usuarios WHERE user_id = ?`, [id]);
-    if (!perms) return res.status(404).json({ error: "Permissões não encontradas" });
+    if (!perms) return res.status(404).json({ error: "PermissÃµes nÃ£o encontradas" });
     res.json(perms);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1625,7 +2148,7 @@ app.put("/api/usuarios/:id/permissoes", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const campos = [
-      "ver_dashboard","ver_inventario","criar_editar_itens","ver_etiquetas",
+      "ver_dashboard","ver_inventario","criar_editar_itens","criar_itens","editar_itens","excluir_itens","ver_etiquetas",
       "usar_scanner","ver_movimentacoes","registrar_movimentacao","importar_exportar","gerenciar_usuarios"
     ];
     const valores = {};
@@ -1635,7 +2158,7 @@ app.put("/api/usuarios/:id/permissoes", requireAdmin, async (req, res) => {
       }
     }
     if (Object.keys(valores).length === 0) {
-      return res.status(400).json({ error: "Nenhuma permissão enviada" });
+      return res.status(400).json({ error: "Nenhuma permissÃ£o enviada" });
     }
     const setClause = Object.keys(valores).map(k => `${k} = ?`).join(", ");
     const params = [...Object.values(valores), id];
@@ -1781,6 +2304,120 @@ app.get("/api/configuracoes/backup", requireAdmin, async (req, res) => {
   }
 });
 
+app.get("/api/categorias", requireAuth, async (req, res) => {
+  try {
+    await carregarCategoriasCustomizadas();
+    return res.json({
+      ok: true,
+      categorias: listarCategoriasDisponiveis(),
+      padrao: CATEGORIAS_PADRAO,
+      customizadas: categoriasCustomizadas
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro ao carregar categorias" });
+  }
+});
+
+app.get("/api/localizacoes", requireAuth, async (req, res) => {
+  try {
+    await carregarLocalizacoesCustomizadas();
+    return res.json({
+      ok: true,
+      localizacoes: listarLocalizacoesDisponiveis(),
+      padrao: LOCALIZACOES_PADRAO,
+      customizadas: localizacoesCustomizadas
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro ao carregar localizaÃ§Ãµes" });
+  }
+});
+
+app.get("/api/configuracoes/categorias", requireAdmin, async (req, res) => {
+  try {
+    await carregarCategoriasCustomizadas();
+    return res.json({
+      ok: true,
+      categorias: listarCategoriasDisponiveis(),
+      padrao: CATEGORIAS_PADRAO,
+      customizadas: categoriasCustomizadas
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro ao carregar categorias" });
+  }
+});
+
+app.get("/api/configuracoes/localizacoes", requireAdmin, async (req, res) => {
+  try {
+    await carregarLocalizacoesCustomizadas();
+    return res.json({
+      ok: true,
+      localizacoes: listarLocalizacoesDisponiveis(),
+      padrao: LOCALIZACOES_PADRAO,
+      customizadas: localizacoesCustomizadas
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro ao carregar localizaÃ§Ãµes" });
+  }
+});
+
+app.put("/api/configuracoes/categorias", requireAdmin, async (req, res) => {
+  try {
+    const categorias = Array.isArray(req.body?.categorias) ? req.body.categorias : [];
+    categoriasCustomizadas = [...new Set(
+      categorias
+        .map((item) => normalizeText(item))
+        .filter(Boolean)
+        .filter((item) => !CATEGORIAS_PADRAO.some((padrao) => normalizarTextoComparacao(padrao) === normalizarTextoComparacao(item)))
+    )];
+
+    await definirConfigValor("categorias_customizadas", JSON.stringify(categoriasCustomizadas));
+
+    return res.json({
+      ok: true,
+      categorias: listarCategoriasDisponiveis(),
+      padrao: CATEGORIAS_PADRAO,
+      customizadas: categoriasCustomizadas
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro ao salvar categorias" });
+  }
+});
+
+app.put("/api/configuracoes/localizacoes", requireAdmin, async (req, res) => {
+  try {
+    const localizacoes = Array.isArray(req.body?.localizacoes) ? req.body.localizacoes : [];
+    localizacoesCustomizadas = [...new Set(
+      localizacoes
+        .map((item) => normalizeText(item))
+        .filter(Boolean)
+        .filter((item) => !LOCALIZACOES_PADRAO.some((padrao) => normalizarTextoComparacao(padrao) === normalizarTextoComparacao(item)))
+    )];
+
+    await definirConfigValor("localizacoes_customizadas", JSON.stringify(localizacoesCustomizadas));
+
+    return res.json({
+      ok: true,
+      localizacoes: listarLocalizacoesDisponiveis(),
+      padrao: LOCALIZACOES_PADRAO,
+      customizadas: localizacoesCustomizadas
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro ao salvar localizaÃ§Ãµes" });
+  }
+});
+
+app.get("/api/configuracoes/estoque", requireAuth, async (req, res) => {
+  try {
+    const limite = Math.max(1, Number(await obterConfigValor("estoque_baixo_limite", "2")) || 2);
+    res.json({
+      ok: true,
+      estoque_baixo_limite: limite
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.put("/api/configuracoes/backup", requireAdmin, async (req, res) => {
   try {
     const habilitado = req.body?.backup_auto_habilitado ? 1 : 0;
@@ -1788,18 +2425,28 @@ app.put("/api/configuracoes/backup", requireAdmin, async (req, res) => {
     const reterDias = Math.max(1, Number(req.body?.backup_reter_dias) || 15);
 
     if (!/^\d{2}:\d{2}$/.test(horario)) {
-      return res.status(400).json({ error: "Horário inválido. Use HH:MM." });
+      return res.status(400).json({ error: "HorÃ¡rio invÃ¡lido. Use HH:MM." });
     }
 
     const [hh, mm] = horario.split(":").map((v) => Number(v));
     if (hh < 0 || hh > 23 || mm < 0 || mm > 59) {
-      return res.status(400).json({ error: "Horário inválido." });
+      return res.status(400).json({ error: "HorÃ¡rio invÃ¡lido." });
     }
 
     await definirConfigValor("backup_auto_habilitado", String(habilitado));
     await definirConfigValor("backup_auto_horario", horario);
     await definirConfigValor("backup_reter_dias", String(reterDias));
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/configuracoes/estoque", requireAdmin, async (req, res) => {
+  try {
+    const limite = Math.max(1, Number(req.body?.estoque_baixo_limite) || 2);
+    await definirConfigValor("estoque_baixo_limite", String(limite));
+    res.json({ ok: true, estoque_baixo_limite: limite });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1822,6 +2469,7 @@ app.get("/api/itens", requireAuth, async (req, res) => {
     const rows = await allQuery(`
       SELECT
         i.*,
+        COALESCE(i.quantidade_total, 0) +
         COALESCE(SUM(CASE WHEN m.tipo = 'ENTRADA' THEN m.quantidade ELSE 0 END), 0) -
         COALESCE(SUM(CASE WHEN m.tipo = 'SAIDA' THEN m.quantidade ELSE 0 END), 0) AS estoque_atual
       FROM itens i
@@ -1841,6 +2489,7 @@ app.get("/api/items", requireAuth, async (req, res) => {
     const rows = await allQuery(`
       SELECT
         i.*,
+        COALESCE(i.quantidade_total, 0) +
         COALESCE(SUM(CASE WHEN m.tipo = 'ENTRADA' THEN m.quantidade ELSE 0 END), 0) -
         COALESCE(SUM(CASE WHEN m.tipo = 'SAIDA' THEN m.quantidade ELSE 0 END), 0) AS estoque_atual
       FROM itens i
@@ -1855,10 +2504,9 @@ app.get("/api/items", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/api/itens", requirePerm("criar_editar_itens"), async (req, res) => {
+app.post("/api/itens", requirePerm("criar_itens"), async (req, res) => {
   try {
     const {
-      codigo,
       ferramenta,
       categoria,
       marca_modelo,
@@ -1871,10 +2519,10 @@ app.post("/api/itens", requirePerm("criar_editar_itens"), async (req, res) => {
     const nomeFerramenta = normalizeText(ferramenta);
 
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta é obrigatório" });
+      return res.status(400).json({ error: "O campo ferramenta Ã© obrigatÃ³rio" });
     }
 
-    const codigoFinal = await gerarCodigoAutomatico(codigo);
+    const codigoFinal = await gerarCodigoAutomatico();
 
     const result = await runQuery(
       `INSERT INTO itens (
@@ -1890,7 +2538,7 @@ app.post("/api/itens", requirePerm("criar_editar_itens"), async (req, res) => {
       [
         codigoFinal,
         nomeFerramenta,
-        normalizeText(categoria),
+        categoriaPadronizada(categoria, nomeFerramenta),
         normalizeText(marca_modelo),
         parseNumero(quantidade_total),
         normalizeText(localizacao),
@@ -1907,17 +2555,16 @@ app.post("/api/itens", requirePerm("criar_editar_itens"), async (req, res) => {
     res.json({ ok: true, codigo: codigoFinal });
   } catch (e) {
     if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "Já existe um item com esse código." });
+      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
     }
 
     res.status(500).json({ error: e.message });
   }
 });
 
-app.post("/api/items", requirePerm("criar_editar_itens"), async (req, res) => {
+app.post("/api/items", requirePerm("criar_itens"), async (req, res) => {
   try {
     const {
-      codigo,
       nome,
       ferramenta,
       categoria,
@@ -1931,10 +2578,10 @@ app.post("/api/items", requirePerm("criar_editar_itens"), async (req, res) => {
     const nomeFerramenta = normalizeText(ferramenta || nome);
 
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta/nome é obrigatório" });
+      return res.status(400).json({ error: "O campo ferramenta/nome Ã© obrigatÃ³rio" });
     }
 
-    const codigoFinal = await gerarCodigoAutomatico(codigo);
+    const codigoFinal = await gerarCodigoAutomatico();
 
     const result = await runQuery(
       `INSERT INTO itens (
@@ -1950,7 +2597,7 @@ app.post("/api/items", requirePerm("criar_editar_itens"), async (req, res) => {
       [
         codigoFinal,
         nomeFerramenta,
-        normalizeText(categoria),
+        categoriaPadronizada(categoria, nomeFerramenta),
         normalizeText(marca_modelo),
         parseNumero(quantidade_total),
         normalizeText(localizacao),
@@ -1967,16 +2614,349 @@ app.post("/api/items", requirePerm("criar_editar_itens"), async (req, res) => {
     res.json({ ok: true, codigo: codigoFinal });
   } catch (e) {
     if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "Já existe um item com esse código." });
+      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
     }
 
     res.status(500).json({ error: e.message });
   }
 });
 
+app.put("/api/itens/:id", requirePerm("editar_itens"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const itemAtual = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
+
+    if (!itemAtual) {
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+    }
+
+    const {
+      codigo,
+      ferramenta,
+      categoria,
+      marca_modelo,
+      quantidade_total,
+      localizacao,
+      estado_inicial,
+      observacao
+    } = req.body || {};
+
+    const nomeFerramenta = normalizeText(ferramenta);
+    if (!nomeFerramenta) {
+      return res.status(400).json({ error: "O campo ferramenta Ã© obrigatÃ³rio" });
+    }
+
+    const codigoFinal = await validarCodigoDisponivelParaItem(codigo || itemAtual.codigo, id);
+
+    await runQuery(
+      `UPDATE itens
+       SET codigo = ?, ferramenta = ?, categoria = ?, marca_modelo = ?, quantidade_total = ?,
+           localizacao = ?, estado_inicial = ?, observacao = ?
+       WHERE id = ?`,
+      [
+        codigoFinal,
+        nomeFerramenta,
+        categoriaPadronizada(categoria, nomeFerramenta),
+        normalizeText(marca_modelo),
+        parseNumero(quantidade_total),
+        normalizeText(localizacao),
+        normalizeText(estado_inicial),
+        normalizeText(observacao),
+        id
+      ]
+    );
+
+    await registrarAuditoria(req, "EDITAR_ITEM", "item", id, {
+      codigo: codigoFinal,
+      ferramenta: nomeFerramenta
+    });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    if (String(e.message).includes("UNIQUE constraint failed")) {
+      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
+    }
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const itemAtual = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
+
+    if (!itemAtual) {
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+    }
+
+    const {
+      codigo,
+      nome,
+      ferramenta,
+      categoria,
+      marca_modelo,
+      quantidade_total,
+      localizacao,
+      estado_inicial,
+      observacao
+    } = req.body || {};
+
+    const nomeFerramenta = normalizeText(ferramenta || nome);
+    if (!nomeFerramenta) {
+      return res.status(400).json({ error: "O campo ferramenta/nome Ã© obrigatÃ³rio" });
+    }
+
+    const codigoFinal = await validarCodigoDisponivelParaItem(codigo || itemAtual.codigo, id);
+
+    await runQuery(
+      `UPDATE itens
+       SET codigo = ?, ferramenta = ?, categoria = ?, marca_modelo = ?, quantidade_total = ?,
+           localizacao = ?, estado_inicial = ?, observacao = ?
+       WHERE id = ?`,
+      [
+        codigoFinal,
+        nomeFerramenta,
+        categoriaPadronizada(categoria, nomeFerramenta),
+        normalizeText(marca_modelo),
+        parseNumero(quantidade_total),
+        normalizeText(localizacao),
+        normalizeText(estado_inicial),
+        normalizeText(observacao),
+        id
+      ]
+    );
+
+    await registrarAuditoria(req, "EDITAR_ITEM", "item", id, {
+      codigo: codigoFinal,
+      ferramenta: nomeFerramenta
+    });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    if (String(e.message).includes("UNIQUE constraint failed")) {
+      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
+    }
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/itens/:id", requirePerm("excluir_itens"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const itemAtual = await getQuery(`SELECT id, codigo, ferramenta FROM itens WHERE id = ?`, [id]);
+
+    if (!itemAtual) {
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+    }
+
+    const movimentacoes = await getQuery(
+      `SELECT COUNT(*) AS total FROM movimentacoes WHERE item_id = ?`,
+      [id]
+    );
+
+    if (Number(movimentacoes?.total || 0) > 0) {
+      return res.status(400).json({
+        error: "NÃ£o Ã© possÃ­vel excluir itens com histÃ³rico de movimentaÃ§Ãµes."
+      });
+    }
+
+    await runQuery(`DELETE FROM itens WHERE id = ?`, [id]);
+
+    await registrarAuditoria(req, "EXCLUIR_ITEM", "item", id, {
+      codigo: itemAtual.codigo,
+      ferramenta: itemAtual.ferramenta
+    });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/items/:id", requirePerm("excluir_itens"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const itemAtual = await getQuery(`SELECT id, codigo, ferramenta FROM itens WHERE id = ?`, [id]);
+
+    if (!itemAtual) {
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+    }
+
+    const movimentacoes = await getQuery(
+      `SELECT COUNT(*) AS total FROM movimentacoes WHERE item_id = ?`,
+      [id]
+    );
+
+    if (Number(movimentacoes?.total || 0) > 0) {
+      return res.status(400).json({
+        error: "NÃ£o Ã© possÃ­vel excluir itens com histÃ³rico de movimentaÃ§Ãµes."
+      });
+    }
+
+    await runQuery(`DELETE FROM itens WHERE id = ?`, [id]);
+
+    await registrarAuditoria(req, "EXCLUIR_ITEM", "item", id, {
+      codigo: itemAtual.codigo,
+      ferramenta: itemAtual.ferramenta
+    });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // =========================
-// API: MOVIMENTAÇÕES
+// API: MOVIMENTAÃ‡Ã•ES
 // =========================
+app.get("/api/almoxarifado/itens", requireAuth, async (req, res) => {
+  try {
+    const rows = await allQuery(`
+      SELECT
+        i.*,
+        COALESCE(i.quantidade_total, 0) +
+        COALESCE(SUM(CASE WHEN m.tipo = 'ENTRADA' THEN m.quantidade ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN m.tipo = 'SAIDA' THEN m.quantidade ELSE 0 END), 0) AS estoque_atual
+      FROM almoxarifado_itens i
+      LEFT JOIN almoxarifado_movimentacoes m ON m.item_id = i.id
+      GROUP BY i.id
+      ORDER BY i.codigo
+    `);
+
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/almoxarifado/itens", requirePerm("criar_itens"), async (req, res) => {
+  try {
+    const {
+      ferramenta,
+      categoria,
+      marca_modelo,
+      quantidade_total,
+      unidade_medida,
+      embalagem,
+      estoque_minimo,
+      fornecedor,
+      localizacao,
+      estado_inicial,
+      observacao
+    } = req.body || {};
+
+    const nomeMaterial = normalizeText(ferramenta);
+    if (!nomeMaterial) {
+      return res.status(400).json({ error: "O campo material é obrigatório" });
+    }
+
+    const codigoFinal = await gerarCodigoAutomaticoAlmox();
+    await runQuery(
+      `INSERT INTO almoxarifado_itens (
+        codigo,
+        ferramenta,
+        categoria,
+        marca_modelo,
+        quantidade_total,
+        unidade_medida,
+        embalagem,
+        estoque_minimo,
+        fornecedor,
+        localizacao,
+        estado_inicial,
+        observacao
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        codigoFinal,
+        nomeMaterial,
+        categoriaPadronizada(categoria, nomeMaterial),
+        normalizeText(marca_modelo),
+        parseNumero(quantidade_total),
+        normalizeText(unidade_medida || "un"),
+        normalizeText(embalagem),
+        parseNumero(estoque_minimo),
+        normalizeText(fornecedor),
+        normalizeText(localizacao || "Almoxarifado"),
+        normalizeText(estado_inicial),
+        normalizeText(observacao)
+      ]
+    );
+
+    await registrarAuditoria(req, "CRIAR_ITEM_ALMOX", "almoxarifado_item", null, {
+      codigo: codigoFinal,
+      ferramenta: nomeMaterial
+    });
+
+    res.json({ ok: true, codigo: codigoFinal });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/almoxarifado/movimentacoes", requireAuth, async (req, res) => {
+  try {
+    const rows = await allQuery(`
+      SELECT
+        m.*,
+        i.codigo,
+        i.ferramenta
+      FROM almoxarifado_movimentacoes m
+      JOIN almoxarifado_itens i ON i.id = m.item_id
+      ORDER BY m.id DESC
+      LIMIT 300
+    `);
+
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/almoxarifado/movimentacoes", requirePerm("registrar_movimentacao"), async (req, res) => {
+  const { item_id, tipo, quantidade, obra, funcionario, observacao } = req.body;
+
+  if (!item_id || !tipo || quantidade === undefined || quantidade === null) {
+    return res.status(400).json({ error: "item_id, tipo e quantidade são obrigatórios" });
+  }
+
+  const qtd = parseNumero(quantidade);
+  if (qtd <= 0) {
+    return res.status(400).json({ error: "A quantidade deve ser maior que zero" });
+  }
+
+  if (!["ENTRADA", "SAIDA"].includes(tipo)) {
+    return res.status(400).json({ error: "Tipo inválido. Use ENTRADA ou SAIDA" });
+  }
+
+  try {
+    const itemExiste = await getQuery(`SELECT id FROM almoxarifado_itens WHERE id = ?`, [item_id]);
+    if (!itemExiste) {
+      return res.status(404).json({ error: "Material do almoxarifado não encontrado" });
+    }
+
+    const estoqueAtual = await obterEstoqueAtualAlmox(item_id);
+    if (tipo === "SAIDA" && estoqueAtual - qtd < 0) {
+      return res.status(400).json({ error: `Saída inválida. Estoque atual: ${estoqueAtual}` });
+    }
+
+    const result = await runQuery(
+      `INSERT INTO almoxarifado_movimentacoes (item_id, tipo, quantidade, obra, funcionario, observacao)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [item_id, tipo, qtd, normalizeText(obra), normalizeText(funcionario), normalizeText(observacao)]
+    );
+
+    await registrarAuditoria(req, "REGISTRAR_MOVIMENTACAO_ALMOX", "almoxarifado_movimentacao", result.id, {
+      item_id: Number(item_id),
+      tipo,
+      quantidade: qtd
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get("/api/movimentacoes", requireAuth, async (req, res) => {
   try {
     const rows = await allQuery(`
@@ -2020,7 +3000,7 @@ app.post("/api/movimentacoes", requirePerm("registrar_movimentacao"), async (req
 
   if (!item_id || !tipo || quantidade === undefined || quantidade === null) {
     return res.status(400).json({
-      error: "item_id, tipo e quantidade são obrigatórios"
+      error: "item_id, tipo e quantidade sÃ£o obrigatÃ³rios"
     });
   }
 
@@ -2034,7 +3014,7 @@ app.post("/api/movimentacoes", requirePerm("registrar_movimentacao"), async (req
 
   if (!["ENTRADA", "SAIDA"].includes(tipo)) {
     return res.status(400).json({
-      error: "Tipo inválido. Use ENTRADA ou SAIDA"
+      error: "Tipo invÃ¡lido. Use ENTRADA ou SAIDA"
     });
   }
 
@@ -2042,14 +3022,14 @@ app.post("/api/movimentacoes", requirePerm("registrar_movimentacao"), async (req
     const itemExiste = await getQuery(`SELECT id FROM itens WHERE id = ?`, [item_id]);
 
     if (!itemExiste) {
-      return res.status(404).json({ error: "Item não encontrado" });
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
     }
 
     const estoqueAtual = await obterEstoqueAtual(item_id);
 
     if (tipo === "SAIDA" && estoqueAtual - qtd < 0) {
       return res.status(400).json({
-        error: `Saída inválida. Estoque atual: ${estoqueAtual}`
+        error: `SaÃ­da invÃ¡lida. Estoque atual: ${estoqueAtual}`
       });
     }
 
@@ -2089,7 +3069,7 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
 
   if (!item_id || !tipo || quantidade === undefined || quantidade === null) {
     return res.status(400).json({
-      error: "item_id, tipo e quantidade são obrigatórios"
+      error: "item_id, tipo e quantidade sÃ£o obrigatÃ³rios"
     });
   }
 
@@ -2103,7 +3083,7 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
 
   if (!["ENTRADA", "SAIDA"].includes(tipo)) {
     return res.status(400).json({
-      error: "Tipo inválido. Use ENTRADA ou SAIDA"
+      error: "Tipo invÃ¡lido. Use ENTRADA ou SAIDA"
     });
   }
 
@@ -2111,14 +3091,14 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
     const itemExiste = await getQuery(`SELECT id FROM itens WHERE id = ?`, [item_id]);
 
     if (!itemExiste) {
-      return res.status(404).json({ error: "Item não encontrado" });
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
     }
 
     const estoqueAtual = await obterEstoqueAtual(item_id);
 
     if (tipo === "SAIDA" && estoqueAtual - qtd < 0) {
       return res.status(400).json({
-        error: `Saída inválida. Estoque atual: ${estoqueAtual}`
+        error: `SaÃ­da invÃ¡lida. Estoque atual: ${estoqueAtual}`
       });
     }
 
@@ -2163,7 +3143,7 @@ app.get("/api/qrcode/:id", requirePerm("ver_etiquetas"), async (req, res) => {
     const item = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
 
     if (!item) {
-      return res.status(404).json({ error: "Item não encontrado" });
+      return res.status(404).json({ error: "Item nÃ£o encontrado" });
     }
 
     const conteudoQR = `UNIQ-${item.codigo || item.id}`;
@@ -2184,7 +3164,7 @@ app.get("/api/qrcode/:id", requirePerm("ver_etiquetas"), async (req, res) => {
 // BUSCAR ITEM PELO QR CODE
 // =========================
 app.get("/api/item-qr/:codigo", requirePerm("usar_scanner"), async (req, res) => {
-  const codigo = normalizeText(req.params.codigo).replace(/^(PRZ|UNIQ)-/, "");
+  const codigo = normalizeText(req.params.codigo).replace(/^UNIQ-/, "");
 
   try {
     const item = await getQuery(
@@ -2193,7 +3173,7 @@ app.get("/api/item-qr/:codigo", requirePerm("usar_scanner"), async (req, res) =>
     );
 
     if (!item) {
-      return res.status(404).json({ error: "Ferramenta não encontrada" });
+      return res.status(404).json({ error: "Ferramenta nÃ£o encontrada" });
     }
 
     res.json(item);
@@ -2205,6 +3185,59 @@ app.get("/api/item-qr/:codigo", requirePerm("usar_scanner"), async (req, res) =>
 // =========================
 // IMPORTAR CSV / XLSX / XLS / XML
 // =========================
+app.post("/api/importar-almoxarifado", requirePerm("importar_exportar"), upload.single("arquivo"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo enviado" });
+    }
+
+    const extensao = path.extname(req.file.originalname).toLowerCase();
+    let linhas = [];
+    let encodingDetectado = "";
+
+    if (extensao === ".xlsx" || extensao === ".xls") {
+      const workbook = xlsx.readFile(req.file.path);
+      const nomePrimeiraAba = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[nomePrimeiraAba];
+      linhas = xlsx.utils.sheet_to_json(worksheet, { defval: "" });
+    } else if (extensao === ".csv") {
+      const csvBuffer = fs.readFileSync(req.file.path);
+      const csvResult = await parseCsvRowsFromBuffer(csvBuffer);
+      linhas = csvResult.rows;
+      encodingDetectado = csvResult.encoding;
+    } else if (extensao === ".xml") {
+      const xmlBuffer = fs.readFileSync(req.file.path);
+      const xmlResult = decodeTextBuffer(xmlBuffer, { xml: true });
+      const xmlBruto = xmlResult.text;
+      encodingDetectado = xmlResult.encoding;
+      linhas = parseXmlParaLinhas(xmlBruto);
+      if (!linhas.length) {
+        deletarArquivoSeExistir(req.file.path);
+        return res.status(400).json({ error: "XML sem registros válidos para importação." });
+      }
+    } else {
+      deletarArquivoSeExistir(req.file.path);
+      return res.status(400).json({ error: "Formato não suportado. Use CSV, XLSX, XLS ou XML." });
+    }
+
+    const relatorio = await importarLinhasNoAlmoxarifado(linhas);
+    await registrarAuditoria(req, "IMPORTAR_ALMOXARIFADO", "almoxarifado_item", null, {
+      arquivo: req.file.originalname,
+      extensao,
+      encoding_detectado: encodingDetectado || null,
+      total_recebido: relatorio.total_recebido,
+      total_importado: relatorio.total_importado,
+      total_ignorado: relatorio.total_ignorado,
+      total_erros: relatorio.total_erros
+    });
+
+    deletarArquivoSeExistir(req.file.path);
+    res.json({ ok: true, encoding_detectado: encodingDetectado || null, inventario: "almoxarifado", ...relatorio });
+  } catch (e) {
+    deletarArquivoSeExistir(req.file?.path);
+    res.status(500).json({ error: e.message });
+  }
+});
 app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("arquivo"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "Nenhum arquivo enviado." });
@@ -2213,6 +3246,7 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
   try {
     const extensao = path.extname(req.file.originalname).toLowerCase();
     let linhas = [];
+    let encodingDetectado = "";
 
     if (extensao === ".xlsx" || extensao === ".xls") {
       const workbook = xlsx.readFile(req.file.path);
@@ -2220,28 +3254,26 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
       const worksheet = workbook.Sheets[nomePrimeiraAba];
       linhas = xlsx.utils.sheet_to_json(worksheet, { defval: "" });
     } else if (extensao === ".csv") {
-      linhas = await new Promise((resolve, reject) => {
-        const registros = [];
-
-        fs.createReadStream(req.file.path)
-          .pipe(csv({ separator: ";" }))
-          .on("data", (data) => registros.push(data))
-          .on("end", () => resolve(registros))
-          .on("error", reject);
-      });
+      const csvBuffer = fs.readFileSync(req.file.path);
+      const csvResult = await parseCsvRowsFromBuffer(csvBuffer);
+      linhas = csvResult.rows;
+      encodingDetectado = csvResult.encoding;
     } else if (extensao === ".xml") {
-      const xmlBruto = fs.readFileSync(req.file.path, "utf8");
+      const xmlBuffer = fs.readFileSync(req.file.path);
+      const xmlResult = decodeTextBuffer(xmlBuffer, { xml: true });
+      const xmlBruto = xmlResult.text;
+      encodingDetectado = xmlResult.encoding;
       linhas = parseXmlParaLinhas(xmlBruto);
       if (!linhas.length) {
         deletarArquivoSeExistir(req.file.path);
         return res.status(400).json({
-          error: "XML sem registros válidos para importação."
+          error: "XML sem registros vÃ¡lidos para importaÃ§Ã£o."
         });
       }
     } else {
       deletarArquivoSeExistir(req.file.path);
       return res.status(400).json({
-        error: "Formato não suportado. Use CSV, XLSX, XLS ou XML."
+        error: "Formato nÃ£o suportado. Use CSV, XLSX, XLS ou XML."
       });
     }
 
@@ -2249,6 +3281,7 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
     await registrarAuditoria(req, "IMPORTAR_ITENS", "item", null, {
       arquivo: req.file.originalname,
       extensao,
+      encoding_detectado: encodingDetectado || null,
       total_recebido: relatorio.total_recebido,
       total_importado: relatorio.total_importado,
       total_ignorado: relatorio.total_ignorado,
@@ -2259,12 +3292,12 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
 
     if (relatorio.total_importado === 0 && relatorio.total_erros > 0) {
       return res.status(400).json({
-        error: "Nenhuma linha foi importada. Verifique o relatório de erros.",
+        error: "Nenhuma linha foi importada. Verifique o relatÃ³rio de erros.",
         relatorio
       });
     }
 
-    res.json({ ok: true, ...relatorio });
+    res.json({ ok: true, encoding_detectado: encodingDetectado || null, ...relatorio });
   } catch (erro) {
     deletarArquivoSeExistir(req.file?.path);
 
@@ -2275,9 +3308,9 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
 });
 
 // =========================
-// CORRIGIR CÓDIGOS ANTIGOS
+// CORRIGIR CÃ“DIGOS ANTIGOS
 // =========================
-app.post("/api/corrigir-codigos-antigos", async (req, res) => {
+app.post("/api/corrigir-codigos-antigos", requireAdmin, async (req, res) => {
   try {
     const itensSemCodigo = await allQuery(`
       SELECT id
@@ -2287,7 +3320,7 @@ app.post("/api/corrigir-codigos-antigos", async (req, res) => {
     `);
 
     for (const item of itensSemCodigo) {
-      const codigoGerado = `FER-${String(item.id).padStart(4, "0")}`;
+      const codigoGerado = formatarCodigoItem(item.id);
 
       await runQuery(
         `UPDATE itens SET codigo = ? WHERE id = ?`,
@@ -2307,7 +3340,11 @@ app.post("/api/corrigir-codigos-antigos", async (req, res) => {
 // =========================
 // DEBUG
 // =========================
-app.get("/api/debug-itens", requireAuth, async (req, res) => {
+app.get("/api/debug-itens", requireAdmin, async (req, res) => {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(404).json({ error: "Rota indisponivel" });
+  }
+
   try {
     const itens = await allQuery(`
       SELECT id, codigo, ferramenta
@@ -2322,9 +3359,9 @@ app.get("/api/debug-itens", requireAuth, async (req, res) => {
 });
 
 // =========================
-// REORGANIZAR CÓDIGOS FER
+// REORGANIZAR CÃ“DIGOS
 // =========================
-app.get("/api/reorganizar-codigos-fer", requireAuth, async (req, res) => {
+app.get("/api/reorganizar-codigos-fer", requireAdmin, async (req, res) => {
   try {
     const itens = await allQuery(`
       SELECT id, codigo
@@ -2332,70 +3369,64 @@ app.get("/api/reorganizar-codigos-fer", requireAuth, async (req, res) => {
       ORDER BY id
     `);
 
-    await runQuery("BEGIN TRANSACTION");
-
-    for (const item of itens) {
-      await runQuery(
-        `UPDATE itens SET codigo = ? WHERE id = ?`,
-        [`TMP-${item.id}`, item.id]
-      );
-    }
-
     let contador = 1;
 
-    for (const item of itens) {
-      const codigoNovo = `FER-${String(contador).padStart(4, "0")}`;
+    await db.withTransaction(async () => {
+      for (const item of itens) {
+        await runQuery(
+          `UPDATE itens SET codigo = ? WHERE id = ?`,
+          [`TMP-${item.id}`, item.id]
+        );
+      }
+
+      for (const item of itens) {
+        const codigoNovo = formatarCodigoItem(contador);
+
+        await runQuery(
+          `UPDATE itens SET codigo = ? WHERE id = ?`,
+          [codigoNovo, item.id]
+        );
+
+        contador++;
+      }
+
+      await criarConfiguracaoSeNaoExistir("sequencia_codigo_item", String(contador));
 
       await runQuery(
-        `UPDATE itens SET codigo = ? WHERE id = ?`,
-        [codigoNovo, item.id]
+        `UPDATE configuracoes
+         SET valor = ?
+         WHERE chave = 'sequencia_codigo_item'`,
+        [contador]
       );
-
-      contador++;
-    }
-
-    await criarConfiguracaoSeNaoExistir("sequencia_codigo_item", String(contador));
-
-    await runQuery(
-      `UPDATE configuracoes
-       SET valor = ?
-       WHERE chave = 'sequencia_codigo_item'`,
-      [contador]
-    );
-
-    await runQuery("COMMIT");
+    });
 
     res.json({
       ok: true,
       total_corrigido: itens.length,
-      proximo_codigo: `FER-${String(contador).padStart(4, "0")}`
+      proximo_codigo: formatarCodigoItem(contador)
     });
   } catch (e) {
-    try {
-      await runQuery("ROLLBACK");
-    } catch (_) {}
-
     res.status(500).json({ error: e.message });
   }
 });
 
 // =========================
-// SINCRONIZAR SEQUÊNCIA
+// SINCRONIZAR SEQUÃŠNCIA
 // =========================
-app.get("/api/sincronizar-sequencia-codigos", requireAuth, async (req, res) => {
+app.get("/api/sincronizar-sequencia-codigos", requireAdmin, async (req, res) => {
   try {
     const maior = await getQuery(`
       SELECT codigo
       FROM itens
-      WHERE codigo LIKE 'FER-%'
-      ORDER BY CAST(SUBSTR(codigo, 5) AS INTEGER) DESC
+      WHERE codigo LIKE '${ITEM_CODE_PREFIX}-%'
+      ORDER BY CAST(SUBSTR(codigo, ${ITEM_CODE_PREFIX.length + 2}) AS INTEGER) DESC
       LIMIT 1
     `);
 
     let proximo = 1;
 
     if (maior && maior.codigo) {
-      const numero = parseInt(maior.codigo.replace("FER-", ""), 10);
+      const numero = parseInt(maior.codigo.replace(`${ITEM_CODE_PREFIX}-`, ""), 10);
       proximo = Number.isFinite(numero) ? numero + 1 : 1;
     }
 
@@ -2410,7 +3441,7 @@ app.get("/api/sincronizar-sequencia-codigos", requireAuth, async (req, res) => {
 
     res.json({
       ok: true,
-      proximo_codigo: `FER-${String(proximo).padStart(4, "0")}`
+      proximo_codigo: formatarCodigoItem(proximo)
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2418,9 +3449,9 @@ app.get("/api/sincronizar-sequencia-codigos", requireAuth, async (req, res) => {
 });
 
 // =========================
-// EXPORTAR INVENTÁRIO PARA EXCEL
+// EXPORTAR INVENTÃRIO PARA PDF
 // =========================
-app.get("/api/exportar-inventario", requirePerm("importar_exportar"), async (req, res) => {
+app.get("/api/exportar-almoxarifado", requirePerm("importar_exportar"), async (req, res) => {
   try {
     const itens = await allQuery(`
       SELECT
@@ -2430,21 +3461,50 @@ app.get("/api/exportar-inventario", requirePerm("importar_exportar"), async (req
         marca_modelo,
         quantidade_total,
         localizacao,
-        estado_inicial,
-        observacao
-      FROM itens
-      ORDER BY codigo
+        estado_inicial
+      FROM almoxarifado_itens
+      ORDER BY codigo ASC
     `);
 
-    const wb = xlsx.utils.book_new();
-    const ws = xlsx.utils.json_to_sheet(itens);
+    const pdfBuffer = await gerarPdfInventario(itens);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="almoxarifado-exportado.pdf"');
+    return res.end(pdfBuffer);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+app.get("/api/exportar-inventario", requirePerm("importar_exportar"), async (req, res) => {
+  try {
+    const ids = String(req.query.ids || "")
+      .split(",")
+      .map((v) => Number(v.trim()))
+      .filter((v) => Number.isFinite(v) && v > 0);
 
-    xlsx.utils.book_append_sheet(wb, ws, "Inventario");
+    const params = [];
+    const where = ids.length ? `WHERE id IN (${ids.map(() => "?").join(",")})` : "";
+    if (ids.length) params.push(...ids);
 
-    const caminhoArquivo = path.join(BACKUP_DIR, "inventario-exportado.xlsx");
-    xlsx.writeFile(wb, caminhoArquivo);
+    const itens = await allQuery(`
+      SELECT
+        codigo,
+        ferramenta,
+        categoria,
+        marca_modelo,
+        quantidade_total,
+        localizacao,
+        estado_inicial
+      FROM itens
+      ${where}
+      ORDER BY codigo
+    `, params);
 
-    res.download(caminhoArquivo, "inventario-exportado.xlsx");
+    const pdf = await gerarPdfInventario(itens);
+    const nomeArquivo = ids.length ? "inventario-selecionados.pdf" : "inventario-exportado.pdf";
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${nomeArquivo}"`);
+    res.send(pdf);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -2458,7 +3518,7 @@ app.listen(PORT, () => {
 });
 
 // =========================
-// BACKUP AUTOMÁTICO DIÁRIO
+// BACKUP AUTOMÃTICO DIÃRIO
 // =========================
 let ultimoBackupAutomaticoData = "";
 setInterval(async () => {
@@ -2482,3 +3542,4 @@ setInterval(async () => {
     console.error("Erro no agendador de backup:", e.message);
   }
 }, 1000 * 30);
+

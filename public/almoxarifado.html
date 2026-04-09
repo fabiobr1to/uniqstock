@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Almoxarifado | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+  <style>
+    .warehouse-cards{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .warehouse-card{
+      padding:20px 18px;
+      border:1px solid #e2e8f0;
+      border-radius:20px;
+      background:linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+      box-shadow:0 12px 28px rgba(15,23,42,.05);
+    }
+
+    .warehouse-card strong{
+      display:block;
+      margin-top:8px;
+      font-size:32px;
+      line-height:1;
+      color:#0f172a;
+    }
+
+    .warehouse-card span{
+      color:#64748b;
+      font-size:13px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+
+    .warehouse-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#ffedd5;
+      color:#9a3412;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .warehouse-toolbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:16px;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+
+    .warehouse-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .warehouse-search{
+      width:100%;
+      min-height:52px;
+      border-radius:18px;
+      border:1px solid #d8e0ea;
+      background:#fbfcfe;
+      padding:0 18px;
+      font-size:16px;
+    }
+
+    .warehouse-state{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:96px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+
+    .warehouse-state.ok{
+      background:#dcfce7;
+      color:#166534;
+    }
+
+    .warehouse-state.low{
+      background:#fef3c7;
+      color:#92400e;
+    }
+
+    .warehouse-state.critical{
+      background:#fee2e2;
+      color:#991b1b;
+    }
+
+    .warehouse-grid{
+      display:grid;
+      grid-template-columns:minmax(0, 1.05fr) minmax(0, 1.25fr);
+      gap:18px;
+      margin-bottom:18px;
+    }
+
+    .warehouse-item-card{
+      padding:16px 18px;
+      border:1px solid #dbe3ef;
+      border-radius:18px;
+      background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .warehouse-item-card strong{
+      display:block;
+      margin-bottom:8px;
+      font-size:16px;
+      color:#0f172a;
+    }
+
+    .warehouse-item-card p{
+      margin:4px 0 0;
+      color:#64748b;
+      line-height:1.45;
+    }
+
+    .warehouse-item-card.is-empty{
+      background:#fbfcfe;
+      border-style:dashed;
+    }
+
+    .warehouse-history{
+      margin-top:20px;
+    }
+
+    .warehouse-file-panel{
+      margin-bottom:18px;
+      padding:18px;
+      border:1px solid #e2e8f0;
+      border-radius:20px;
+      background:linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+      box-shadow:0 12px 28px rgba(15,23,42,.05);
+    }
+
+    .warehouse-file-actions{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+    }
+
+    .warehouse-file-actions form{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+      width:100%;
+    }
+
+    .warehouse-file-actions .form-group{
+      flex:1;
+      min-width:260px;
+      margin-bottom:0;
+    }
+
+    .warehouse-file-status{
+      margin-top:12px;
+      color:#64748b;
+      min-height:20px;
+    }
+
+    @media (max-width: 980px){
+      .warehouse-cards{
+        grid-template-columns:1fr 1fr;
+      }
+
+      .warehouse-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 640px){
+      .warehouse-cards{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+        <p>Sistema de Inventário</p>
+      </a>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">&#127968;</span><span class="sidebar-link-label">Painel</span></a>
+        <a href="index.html"><span class="sidebar-icon">&#128230;</span><span class="sidebar-link-label">Invent?rio</span></a>
+        <a href="almoxarifado.html" class="ativo"><span class="sidebar-icon">&#128203;</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="cadastro-almoxarifado.html"><span class="sidebar-icon">&#129520;</span><span class="sidebar-link-label">Cadastrar Material</span></a>
+        <a href="etiquetas.html"><span class="sidebar-icon">&#127991;&#65039;</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html"><span class="sidebar-icon">&#128247;</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">&#128209;</span><span class="sidebar-link-label">Movimenta??es</span></a>
+        <a href="usuarios.html"><span class="sidebar-icon">&#128101;</span><span class="sidebar-link-label">Usu?rios</span></a>
+        <a href="perfil.html"><span class="sidebar-icon">&#128100;</span><span class="sidebar-link-label">Perfil</span></a>
+        <a href="permissoes.html"><span class="sidebar-icon">&#128737;&#65039;</span><span class="sidebar-link-label">Permiss?es</span></a>
+        <a href="auditoria.html"><span class="sidebar-icon">&#129534;</span><span class="sidebar-link-label">Auditoria</span></a>
+        <a href="configuracoes.html"><span class="sidebar-icon">&#9881;&#65039;</span><span class="sidebar-link-label">Configura??es</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">&#128682;</span><span class="sidebar-link-label">Sair</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Controle de materiais</span>
+          <h2>Almoxarifado</h2>
+          <p>Saída de materiais e acompanhamento de níveis de estoque para itens armazenados em materiais de consumo.</p>
+        </div>
+      </header>
+
+      <div class="container">
+        <section class="painel-form inventory-panel">
+          <div class="warehouse-toolbar">
+            <div>
+              <span class="warehouse-badge">Inventário próprio de materiais de consumo</span>
+            </div>
+            <div class="warehouse-actions">
+              <a class="btn-secondary inventory-link-btn" href="index.html">Inventário geral</a>
+              <a class="btn-primary inventory-primary-btn" href="cadastro-almoxarifado.html">Novo insumo</a>
+            </div>
+          </div>
+
+          <div class="warehouse-cards">
+            <div class="warehouse-card">
+              <span>Materiais</span>
+              <strong id="warehouseTotalItens">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Estoque total</span>
+              <strong id="warehouseTotalEstoque">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Categorias</span>
+              <strong id="warehouseTotalCategorias">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Itens críticos</span>
+              <strong id="warehouseTotalCriticos">0</strong>
+            </div>
+          </div>
+
+          <section class="warehouse-file-panel">
+            <span class="inventory-kicker">Arquivos próprios</span>
+            <h2 style="margin:10px 0 8px;">Importação e exportação de materiais de consumo</h2>
+            <p class="tool-panel-copy">Os arquivos importados por aqui entram no <strong>inventário próprio de materiais de consumo</strong>. A exportação gera PDF só dos materiais desse módulo, sem misturar com a Ferramentaria.</p>
+
+            <div class="warehouse-file-actions">
+              <form id="formImportacaoAlmox">
+                <div class="form-group">
+                  <label for="arquivoImportacaoAlmox">Arquivo do inventário de materiais de consumo</label>
+                  <input id="arquivoImportacaoAlmox" name="arquivo" type="file" accept=".csv,.xlsx,.xls,.xml" required>
+                </div>
+                <button type="submit" class="btn-primary">Importar no inventário de materiais de consumo</button>
+                <a href="/api/exportar-almoxarifado" target="_blank" class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Exportar PDF de materiais</a>
+              </form>
+            </div>
+
+            <div id="resultadoImportacaoAlmox" class="warehouse-file-status"></div>
+          </section>
+
+          <div class="warehouse-grid">
+            <section class="tool-panel">
+              <span class="inventory-kicker">Operação</span>
+              <h2>Saída de Materiais</h2>
+              <p class="tool-panel-copy">Selecione um material do inventário de materiais de consumo e registre a saída para consumo, obra ou frente de trabalho.</p>
+
+              <div class="tool-form-compact">
+                <div class="form-group">
+                  <label for="almoxBuscaCodigo">Código ou material</label>
+                  <input id="almoxBuscaCodigo" type="text" list="almoxSugestoes" placeholder="Ex.: PRZ-0001 ou nome do material" autocomplete="off">
+                  <datalist id="almoxSugestoes"></datalist>
+                </div>
+
+                <div id="almoxCardItem" class="warehouse-item-card is-empty">
+                  <strong>Nenhum material selecionado</strong>
+                  <p>Escolha um item do inventário de materiais de consumo para liberar o registro de saída.</p>
+                </div>
+
+                <div class="tool-form">
+                  <div class="form-group">
+                    <label for="almoxQuantidade">Quantidade</label>
+                    <input id="almoxQuantidade" type="number" min="1" step="1" value="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="almoxResponsavel">Responsável</label>
+                    <input id="almoxResponsavel" type="text" autocomplete="off" placeholder="Quem retirou o material">
+                  </div>
+                  <div class="form-group">
+                    <label for="almoxObra">Obra / destino</label>
+                    <input id="almoxObra" type="text" autocomplete="off" placeholder="Destino do material">
+                  </div>
+                  <div class="form-group">
+                    <label for="almoxObservacao">Observação</label>
+                    <input id="almoxObservacao" type="text" autocomplete="off" placeholder="Ex.: consumo em manutenção, reposição, uso emergencial">
+                  </div>
+                </div>
+
+                <div class="tool-actions">
+                  <button id="btnSaidaMaterial" type="button" class="tool-primary-btn">Registrar saída</button>
+                </div>
+
+                <p id="almoxStatus" class="tool-status"></p>
+              </div>
+            </section>
+
+            <section class="tool-panel tool-panel-secondary">
+              <span class="inventory-kicker">Consulta rápida</span>
+              <h2>Almoxarifado</h2>
+              <p class="tool-panel-copy">Pesquise materiais disponíveis, acompanhe níveis de estoque e selecione rapidamente o item para a operação.</p>
+
+              <div class="inventory-toolbar">
+                <div class="inventory-search-block">
+                  <label class="inventory-label" for="buscaAlmox">Busca no almoxarifado</label>
+                  <input id="buscaAlmox" class="warehouse-search" type="text" placeholder="Buscar por código, material, categoria ou marca/modelo">
+                </div>
+              </div>
+
+              <div class="inventory-meta">
+                <p id="resumoAlmox" class="inventory-summary">Carregando materiais...</p>
+                <span class="inventory-hint">Itens mantidos exclusivamente no inventário de materiais de consumo.</span>
+              </div>
+
+              <div class="tabela-wrap">
+                <table class="tabela-inventario compacto">
+                  <thead>
+                    <tr>
+                      <th class="col-codigo">Código</th>
+                      <th class="col-ferramenta">Material</th>
+                      <th class="col-categoria">Categoria</th>
+                      <th class="col-marca">Especificao</th>
+                      <th class="col-num">Estoque</th>
+                      <th class="col-categoria">Unid.</th>
+                      <th class="col-categoria">Mn.</th>
+                      <th class="col-estado">Controle</th>
+                      <th class="col-acao">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabelaAlmox"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="painel-lista warehouse-history">
+            <div class="painel-tabela-head">
+              <h2>altimas saídas de materiais de consumo</h2>
+              <span id="resumoMovAlmox" class="inventory-summary">Carregando histórico...</span>
+            </div>
+
+            <div class="tabela-wrap">
+              <table class="tabela-mov">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Código</th>
+                    <th>Material</th>
+                    <th>Operação</th>
+                    <th>Quantidade</th>
+                    <th>Responsável</th>
+                    <th>Obra</th>
+                    <th>Observação</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaMovAlmox"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let itensAlmox = [];
+    let movimentosAlmox = [];
+    let materialSelecionado = null;
+    let estoqueBaixoLimite = 2;
+
+    async function getJson(url, options = {}) {
+      const res = await fetch(url, { credentials: "same-origin", ...options });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    function redirecionarErro(err) {
+      if (err?.status === 401) {
+        window.location.href = "/login.html";
+        return true;
+      }
+      if (err?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+        return true;
+      }
+      return false;
+    }
+
+        function formatarNumero(valor) {
+      const numero = Number(valor || 0);
+      return Number.isInteger(numero) ? String(numero) : numero.toFixed(2);
+    }
+
+    function escapeHtml(valor) {
+      return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function calcularControle(estoque) {
+      const numero = Number(estoque || 0);
+      if (numero <= 0) {
+        return { label: "Crítico", className: "critical" };
+      }
+      const minimo = Number((materialSelecionado && materialSelecionado.estoque_minimo) || estoqueBaixoLimite);
+      if (numero <= minimo) {
+        return { label: "Baixo", className: "low" };
+      }
+      return { label: "OK", className: "ok" };
+    }
+
+    function atualizarCards(lista) {
+      const totalEstoque = lista.reduce((soma, item) => soma + Number(item.estoque_atual ?? item.quantidade_total ?? 0), 0);
+      const totalCategorias = new Set(lista.map((item) => String(item.categoria || "").trim()).filter(Boolean)).size;
+      const totalCriticos = lista.filter((item) => {
+        const estoque = Number(item.estoque_atual ?? item.quantidade_total ?? 0);
+        const minimo = Number(item.estoque_minimo ?? estoqueBaixoLimite);
+        return estoque <= minimo;
+      }).length;
+
+      document.getElementById("warehouseTotalItens").textContent = String(lista.length);
+      document.getElementById("warehouseTotalEstoque").textContent = formatarNumero(totalEstoque);
+      document.getElementById("warehouseTotalCategorias").textContent = String(totalCategorias);
+      document.getElementById("warehouseTotalCriticos").textContent = String(totalCriticos);
+    }
+
+    function preencherSugestoes() {
+      const lista = document.getElementById("almoxSugestoes");
+      lista.innerHTML = "";
+      itensAlmox.forEach((item) => {
+        const optionCodigo = document.createElement("option");
+        optionCodigo.value = item.codigo || "";
+        optionCodigo.label = `${item.codigo || ""} - ${item.ferramenta || ""}`;
+        lista.appendChild(optionCodigo);
+
+        const optionMaterial = document.createElement("option");
+        optionMaterial.value = item.ferramenta || "";
+        optionMaterial.label = item.codigo || "";
+        lista.appendChild(optionMaterial);
+      });
+    }
+
+    function atualizarMaterialSelecionado() {
+      const card = document.getElementById("almoxCardItem");
+      const btn = document.getElementById("btnSaidaMaterial");
+
+      if (!materialSelecionado) {
+        card.className = "warehouse-item-card is-empty";
+        card.innerHTML = "<strong>Nenhum material selecionado</strong><p>Escolha um item do inventário de materiais de consumo para liberar o registro de saída.</p>";
+        btn.disabled = true;
+        return;
+      }
+
+      card.className = "warehouse-item-card";
+      card.innerHTML = `
+        <strong>${escapeHtml(materialSelecionado.codigo || "")} - ${escapeHtml(materialSelecionado.ferramenta || "")}</strong>
+        <p>Categoria: ${escapeHtml(materialSelecionado.categoria || "-")} | Marca / Modelo: ${escapeHtml(materialSelecionado.marca_modelo || "-")}</p>
+        <p>Estoque disponível: ${escapeHtml(formatarNumero(materialSelecionado.estoque_atual ?? materialSelecionado.quantidade_total ?? 0))} | Localização: ${escapeHtml(materialSelecionado.localizacao || "-")}</p>
+      `;
+      btn.disabled = false;
+    }
+
+    function selecionarMaterialPorTermo(termo) {
+      const busca = String(termo || "").trim().toLowerCase();
+      materialSelecionado = itensAlmox.find((item) => String(item.codigo || "").trim().toLowerCase() === busca)
+        || itensAlmox.find((item) => String(item.ferramenta || "").trim().toLowerCase() === busca)
+        || itensAlmox.find((item) => `${item.codigo || ""} ${item.ferramenta || ""}`.toLowerCase().includes(busca))
+        || null;
+      atualizarMaterialSelecionado();
+    }
+
+    function renderTabela(lista) {
+      const tbody = document.getElementById("tabelaAlmox");
+      const resumo = document.getElementById("resumoAlmox");
+      tbody.innerHTML = "";
+
+      lista.forEach((item) => {
+        const controle = calcularControle(item.estoque_atual ?? item.quantidade_total ?? 0);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="col-codigo" data-label="Código">${escapeHtml(item.codigo || "")}</td>
+          <td class="col-ferramenta" data-label="Material" title="${escapeHtml(item.ferramenta || "")}">${escapeHtml(item.ferramenta || "")}</td>
+          <td class="col-categoria" data-label="Categoria">${escapeHtml(item.categoria || "")}</td>
+          <td class="col-marca" data-label="Marca / Modelo" title="${escapeHtml(item.marca_modelo || "")}">${escapeHtml(item.marca_modelo || "")}</td>
+          <td class="col-num" data-label="Estoque">${formatarNumero(item.estoque_atual ?? item.quantidade_total ?? 0)}</td>
+          <td class="col-estado" data-label="Controle"><span class="warehouse-state ${controle.className}">${controle.label}</span></td>
+          <td class="col-acao" data-label="Ação"><button type="button" class="btn-editar-item" data-item-id="${item.id}">Selecionar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      resumo.textContent = `${lista.length} material(is) exibido(s) no inventário de materiais de consumo`;
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Nenhum material encontrado no inventário de materiais de consumo.</td></tr>';
+      }
+      atualizarCards(lista);
+    }
+
+    function renderTabelaMovimentos() {
+      const tbody = document.getElementById("tabelaMovAlmox");
+      const resumo = document.getElementById("resumoMovAlmox");
+      tbody.innerHTML = "";
+      resumo.textContent = `${movimentosAlmox.length} operação(ões) recentes em materiais de consumo`;
+
+      if (!movimentosAlmox.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma saída registrada ainda para o Almoxarifado.</td></tr>';
+        return;
+      }
+
+      movimentosAlmox.slice(0, 30).forEach((mov) => {
+        const tr = document.createElement("tr");
+        const data = mov.data ? new Date(mov.data).toLocaleString("pt-BR") : "-";
+        tr.innerHTML = `
+          <td data-label="Data">${escapeHtml(data)}</td>
+          <td data-label="Código">${escapeHtml(mov.codigo || "")}</td>
+          <td data-label="Material">${escapeHtml(mov.ferramenta || "")}</td>
+          <td data-label="Operação">Saída</td>
+          <td data-label="Quantidade">${escapeHtml(formatarNumero(mov.quantidade || 0))}</td>
+          <td data-label="Responsável">${escapeHtml(mov.funcionario || "-")}</td>
+          <td data-label="Obra">${escapeHtml(mov.obra || "-")}</td>
+          <td data-label="Observação">${escapeHtml(mov.observacao || "-")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function aplicarBusca() {
+      const termo = String(document.getElementById("buscaAlmox").value || "").trim().toLowerCase();
+      const lista = !termo
+        ? itensAlmox
+        : itensAlmox.filter((item) => [item.codigo, item.ferramenta, item.categoria, item.marca_modelo, item.localizacao]
+          .join(" ")
+          .toLowerCase()
+          .includes(termo));
+      renderTabela(lista);
+    }
+
+    async function registrarSaidaMaterial() {
+      if (!materialSelecionado) return;
+
+      const quantidade = Number(document.getElementById("almoxQuantidade").value || 0);
+      const funcionario = document.getElementById("almoxResponsavel").value;
+      const obra = document.getElementById("almoxObra").value;
+      const observacao = document.getElementById("almoxObservacao").value;
+      const status = document.getElementById("almoxStatus");
+
+      status.textContent = "Registrando saída...";
+
+      try {
+        await getJson("/api/almoxarifado/movimentacoes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            item_id: materialSelecionado.id,
+            tipo: "SAIDA",
+            quantidade,
+            funcionario,
+            obra,
+            observacao
+          })
+        });
+
+        status.textContent = "Saída de material do almoxarifado registrada com sucesso.";
+        document.getElementById("almoxQuantidade").value = "1";
+        document.getElementById("almoxResponsavel").value = "";
+        document.getElementById("almoxObra").value = "";
+        document.getElementById("almoxObservacao").value = "";
+
+        await carregarPagina();
+        if (materialSelecionado?.codigo) {
+          document.getElementById("almoxBuscaCodigo").value = materialSelecionado.codigo;
+          selecionarMaterialPorTermo(materialSelecionado.codigo);
+        }
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          document.getElementById("almoxStatus").textContent = err.message || "Não foi possível registrar a saída.";
+        }
+      }
+    }
+
+    async function importarArquivoAlmox(event) {
+      event.preventDefault();
+      const host = document.getElementById("resultadoImportacaoAlmox");
+      host.textContent = "Importando arquivo no inventário de materiais de consumo...";
+
+      try {
+        const form = new FormData(event.target);
+        const data = await getJson("/api/importar-almoxarifado", {
+          method: "POST",
+          body: form
+        });
+
+        host.innerHTML = `
+          <strong>Importação concluída.</strong><br>
+          Inventário: ${data.inventario || "almoxarifado"}<br>
+          Encoding detectado: ${data.encoding_detectado || "n/d"}<br>
+          Recebido: ${data.total_recebido || 0} | Importado: ${data.total_importado || 0} | Ignorado: ${data.total_ignorado || 0} | Erros: ${data.total_erros || 0}
+        `;
+
+        event.target.reset();
+        await carregarPagina();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          const detalhes = err.data?.relatorio
+            ? `<br>Importado: ${err.data.relatorio.total_importado || 0} | Erros: ${err.data.relatorio.total_erros || 0}`
+            : "";
+          host.innerHTML = `<strong>Falha na importação:</strong> ${err.message}${detalhes}`;
+        }
+      }
+    }
+
+    async function carregarPagina() {
+      try {
+        const [itens, configuracoesEstoque, movimentacoes] = await Promise.all([
+          getJson("/api/almoxarifado/itens"),
+          getJson("/api/configuracoes/estoque"),
+          getJson("/api/almoxarifado/movimentacoes")
+        ]);
+
+        estoqueBaixoLimite = Number(configuracoesEstoque.estoque_baixo_limite || 2) || 2;
+        itensAlmox = itens;
+        movimentosAlmox = movimentacoes.filter((mov) => String(mov.tipo || "").toUpperCase() === "SAIDA");
+
+        preencherSugestoes();
+        aplicarBusca();
+        renderTabelaMovimentos();
+
+        if (materialSelecionado?.id) {
+          materialSelecionado = itensAlmox.find((item) => Number(item.id) === Number(materialSelecionado.id)) || null;
+        }
+        atualizarMaterialSelecionado();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          document.getElementById("resumoAlmox").textContent = err.message || "Erro ao carregar almoxarifado.";
+          document.getElementById("resumoMovAlmox").textContent = "Erro ao carregar histórico.";
+        }
+      }
+    }
+
+    document.getElementById("buscaAlmox").addEventListener("input", aplicarBusca);
+    document.getElementById("almoxBuscaCodigo").addEventListener("change", (event) => {
+      selecionarMaterialPorTermo(event.target.value);
+    });
+    document.getElementById("almoxBuscaCodigo").addEventListener("input", (event) => {
+      if (!event.target.value.trim()) {
+        materialSelecionado = null;
+        atualizarMaterialSelecionado();
+      }
+    });
+    document.getElementById("tabelaAlmox").addEventListener("click", (event) => {
+      const botao = event.target.closest("button[data-item-id]");
+      if (!botao) return;
+      const item = itensAlmox.find((registro) => Number(registro.id) === Number(botao.dataset.itemId));
+      if (!item) return;
+      materialSelecionado = item;
+      document.getElementById("almoxBuscaCodigo").value = item.codigo || item.ferramenta || "";
+      atualizarMaterialSelecionado();
+    });
+    document.getElementById("btnSaidaMaterial").addEventListener("click", registrarSaidaMaterial);
+    document.getElementById("formImportacaoAlmox").addEventListener("submit", importarArquivoAlmox);
+
+    carregarPagina();
+  </script>
+</body>
+</html>
+

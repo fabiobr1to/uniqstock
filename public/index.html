@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventário | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+        <p>Sistema de Inventário</p>
+      </a>
+
+      <nav class="sidebar-nav">
+        <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Ferramentaria</span></a>
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
+        <a href="index.html" class="ativo"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário</span></a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span><span class="sidebar-link-label">Cadastrar Ferramenta</span></a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Movimentações</span></a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span><span class="sidebar-link-label">Auditoria</span></a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span><span class="sidebar-link-label">Configurações</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span><span class="sidebar-link-label">Sair</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Operação diária</span>
+          <h2>Inventário</h2>
+          <p>Consulta, busca, edição, exclusão e exportação dos itens cadastrados.</p>
+        </div>
+      </header>
+
+      <div class="container">
+        <section class="painel-form inventory-panel">
+          <div class="inventory-toolbar">
+            <div class="inventory-search-block">
+              <label class="inventory-label" for="buscaItens">Busca rápida</label>
+              <input id="buscaItens" class="inventory-search" type="text" placeholder="Buscar por código, ferramenta, categoria ou localização">
+            </div>
+            <div class="inventory-actions">
+              <a class="btn-secondary inventory-link-btn" href="ferramentaria.html">Ferramentaria</a>
+              <a class="btn-secondary inventory-link-btn" href="almoxarifado.html">Almoxarifado</a>
+              <a class="btn-secondary inventory-link-btn" href="etiquetas-lote.html">Imprimir lote</a>
+              <button id="btnExportarPdf" type="button" class="btn-secondary inventory-secondary-btn">Exportar PDF</button>
+              <a class="btn-primary inventory-primary-btn" href="cadastro-ferramenta.html">Novo item</a>
+            </div>
+          </div>
+
+          <div class="inventory-meta">
+            <p id="resumoItens" class="inventory-summary">Carregando itens...</p>
+            <span class="inventory-hint">Ações fixas à direita para facilitar edição em listas longas.</span>
+          </div>
+
+          <div class="tabela-wrap">
+            <table class="tabela-inventario compacto">
+              <thead>
+                <tr>
+                  <th class="col-check">
+                    <input id="checkTodosItens" type="checkbox" aria-label="Selecionar itens visíveis">
+                  </th>
+                  <th class="col-codigo">Código</th>
+                  <th class="col-ferramenta">Ferramenta</th>
+                  <th class="col-categoria">Categoria</th>
+                  <th class="col-marca">Marca / Modelo</th>
+                  <th class="col-localizacao">Localização</th>
+                  <th class="col-num">Estoque</th>
+                  <th class="col-acao">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaItens"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="modalEdicao" class="inventory-modal-shell">
+    <form id="formEdicao" class="inventory-modal-card">
+      <div class="inventory-modal-head">
+        <div>
+          <span class="inventory-kicker">Atualização rápida</span>
+          <h2 class="inventory-modal-title">Editar item</h2>
+          <p id="subtituloEdicao" class="inventory-modal-subtitle">Atualize os dados do item selecionado.</p>
+        </div>
+        <button type="button" id="btnFecharModal" class="btn-secondary inventory-modal-close">Fechar</button>
+      </div>
+
+      <input type="hidden" id="editId">
+
+      <div class="inventory-modal-grid">
+        <div class="form-group">
+          <label for="editCodigo">Código</label>
+          <input id="editCodigo" type="text" disabled>
+        </div>
+        <div class="form-group">
+          <label for="editFerramenta">Ferramenta</label>
+          <input id="editFerramenta" type="text" required>
+        </div>
+        <div class="form-group">
+          <label for="editCategoria">Categoria</label>
+          <select id="editCategoria"></select>
+        </div>
+        <div class="form-group">
+          <label for="editMarcaModelo">Marca / Modelo</label>
+          <input id="editMarcaModelo" type="text">
+        </div>
+        <div class="form-group">
+          <label for="editQuantidade">Quantidade total</label>
+          <input id="editQuantidade" type="number" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="editLocalizacao">Localização</label>
+          <select id="editLocalizacao"></select>
+        </div>
+        <div class="form-group">
+          <label for="editEstado">Estado inicial</label>
+          <input id="editEstado" type="text">
+        </div>
+        <div class="form-group">
+          <label for="editObservacao">Observação</label>
+          <textarea id="editObservacao" rows="3"></textarea>
+        </div>
+      </div>
+
+      <p id="mensagemEdicao" class="inventory-modal-status"></p>
+
+      <div class="inventory-modal-actions">
+        <button type="button" id="btnCancelarEdicao" class="btn-secondary">Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    let itensCache = [];
+    let itensVisiveis = [];
+    const selectedItemIds = new Set();
+    const CATEGORY_STORAGE_KEY = "uniqstock.customCategories";
+    const LOCATION_STORAGE_KEY = "uniqstock.customLocations";
+    const LABEL_BATCH_STORAGE_KEY = "uniqstock.labelBatchIds";
+    const DEFAULT_CATEGORY_OPTIONS = [
+      "Ferramenta manual",
+      "Ferramenta elétrica",
+      "Ferramenta a bateria",
+      "Ferramenta pneumática",
+      "Ferramenta hidráulica",
+      "Ferramenta a combustão",
+      "Instrumento de medição",
+      "EPI",
+      "Acessório",
+      "Consumível",
+      "Limpeza e manutenção"
+    ];
+    const DEFAULT_LOCATION_OPTIONS = [
+      "Ferramentaria",
+      "Almoxarifado",
+      "Sala PRZ",
+      "Veículo",
+      "Obra",
+      "Estoque externo"
+    ];
+
+    async function getJson(url, options = {}) {
+      const res = await fetch(url, { credentials: "same-origin", ...options });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    function redirecionarErro(err) {
+      if (err?.status === 401) {
+        window.location.href = "/login.html";
+        return true;
+      }
+      if (err?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+        return true;
+      }
+      return false;
+    }
+
+    function preencherCategorias(selectId, categories, placeholder = "Selecione uma categoria") {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const valorAtual = select.value;
+      select.innerHTML = `<option value="">${placeholder}</option>`;
+      categories.forEach((categoria) => {
+        const option = document.createElement("option");
+        option.value = categoria;
+        option.textContent = categoria;
+        select.appendChild(option);
+      });
+      if (valorAtual && categories.includes(valorAtual)) {
+        select.value = valorAtual;
+      }
+    }
+
+    function definirCategoriaSelect(selectId, categoria) {
+      const select = document.getElementById(selectId);
+      const valor = String(categoria || "").trim();
+      if (!select) return;
+      if (valor && !Array.from(select.options).some((option) => option.value === valor)) {
+        const option = document.createElement("option");
+        option.value = valor;
+        option.textContent = valor;
+        select.appendChild(option);
+      }
+      select.value = valor;
+    }
+
+    function definirOpcaoSelect(selectId, valorInformado) {
+      const select = document.getElementById(selectId);
+      const valor = String(valorInformado || "").trim();
+      if (!select) return;
+      if (valor && !Array.from(select.options).some((option) => option.value === valor)) {
+        const option = document.createElement("option");
+        option.value = valor;
+        option.textContent = valor;
+        select.appendChild(option);
+      }
+      select.value = valor;
+    }
+
+    async function carregarCategorias() {
+      const locais = lerCategoriasLocais();
+      try {
+        const dados = await getJson("/api/categorias", { cache: "no-store" });
+        return combinarCategorias(
+          Array.isArray(dados.categorias) ? dados.categorias : [],
+          DEFAULT_CATEGORY_OPTIONS,
+          locais
+        );
+      } catch (_) {
+        return combinarCategorias(DEFAULT_CATEGORY_OPTIONS, locais);
+      }
+    }
+
+    async function carregarLocalizacoes() {
+      const locais = lerLocalizacoesLocais();
+      try {
+        const dados = await getJson("/api/localizacoes", { cache: "no-store" });
+        return combinarCategorias(
+          Array.isArray(dados.localizacoes) ? dados.localizacoes : [],
+          DEFAULT_LOCATION_OPTIONS,
+          locais
+        );
+      } catch (_) {
+        return combinarCategorias(DEFAULT_LOCATION_OPTIONS, locais);
+      }
+    }
+
+    function lerCategoriasLocais() {
+      try {
+        const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
+        const data = JSON.parse(raw || "[]");
+        return Array.isArray(data) ? data.map((item) => String(item || "").trim()).filter(Boolean) : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function lerLocalizacoesLocais() {
+      try {
+        const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
+        const data = JSON.parse(raw || "[]");
+        return Array.isArray(data) ? data.map((item) => String(item || "").trim()).filter(Boolean) : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function combinarCategorias(...listas) {
+      const resultado = [];
+      const vistos = new Set();
+
+      listas.flat().forEach((categoria) => {
+        const valor = String(categoria || "").trim();
+        if (!valor) return;
+        const chave = valor.toLowerCase();
+        if (vistos.has(chave)) return;
+        vistos.add(chave);
+        resultado.push(valor);
+      });
+
+      return resultado;
+    }
+
+    function abrirEdicao(item) {
+      document.getElementById("editId").value = String(item.id || "");
+      document.getElementById("editCodigo").value = item.codigo || "";
+      document.getElementById("editFerramenta").value = item.ferramenta || "";
+      definirCategoriaSelect("editCategoria", item.categoria);
+      document.getElementById("editMarcaModelo").value = item.marca_modelo || "";
+      document.getElementById("editQuantidade").value = item.quantidade_total ?? 0;
+      definirOpcaoSelect("editLocalizacao", item.localizacao);
+      document.getElementById("editEstado").value = item.estado_inicial || "";
+      document.getElementById("editObservacao").value = item.observacao || "";
+      document.getElementById("subtituloEdicao").textContent = `Editando ${item.codigo || ""}`;
+      document.getElementById("mensagemEdicao").textContent = "";
+      document.getElementById("modalEdicao").style.display = "flex";
+    }
+
+    function fecharEdicao() {
+      document.getElementById("modalEdicao").style.display = "none";
+    }
+
+    async function excluirItem(id) {
+      const item = itensCache.find((entry) => Number(entry.id) === Number(id));
+      const rotulo = item?.codigo ? `${item.codigo} - ${item.ferramenta || ""}` : `item ${id}`;
+      if (!confirm(`Deseja excluir ${rotulo}?`)) return;
+
+      try {
+        await getJson(`/api/itens/${id}`, { method: "DELETE" });
+        await carregarItens();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          alert(err.message || "Erro ao excluir item.");
+        }
+      }
+    }
+
+    function renderTabela(lista) {
+      const tbody = document.getElementById("tabelaItens");
+      const resumo = document.getElementById("resumoItens");
+      tbody.innerHTML = "";
+      itensVisiveis = lista.map((item) => Number(item.id)).filter((id) => Number.isFinite(id));
+
+      lista.forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="col-check">
+            <input type="checkbox" class="check-item-lote" data-id="${item.id}" ${selectedItemIds.has(Number(item.id)) ? "checked" : ""} aria-label="Selecionar ${item.codigo || item.ferramenta || "item"}">
+          </td>
+          <td class="col-codigo">${item.codigo || ""}</td>
+          <td class="col-ferramenta" title="${item.ferramenta || ""}">${item.ferramenta || ""}</td>
+          <td class="col-categoria">${item.categoria || ""}</td>
+          <td class="col-marca" title="${item.marca_modelo || ""}">${item.marca_modelo || ""}</td>
+          <td class="col-localizacao" title="${item.localizacao || ""}">${item.localizacao || ""}</td>
+          <td class="col-num">${Number(item.estoque_atual ?? item.quantidade_total ?? 0)}</td>
+          <td class="col-acao">
+            <button type="button" class="btn-secondary btn-editar-item">Editar</button>
+            <button type="button" class="btn-secondary btn-excluir-item">Excluir</button>
+          </td>
+        `;
+        tr.querySelector(".check-item-lote").addEventListener("change", (event) => {
+          const id = Number(event.target.dataset.id);
+          if (event.target.checked) {
+            selectedItemIds.add(id);
+          } else {
+            selectedItemIds.delete(id);
+          }
+          persistirSelecaoLote();
+          atualizarEstadoSelecao();
+        });
+        tr.querySelector(".btn-editar-item").addEventListener("click", () => abrirEdicao(item));
+        tr.querySelector(".btn-excluir-item").addEventListener("click", () => excluirItem(item.id));
+        tbody.appendChild(tr);
+      });
+
+      resumo.textContent = `${lista.length} item(ns) exibido(s)`;
+      if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhum item encontrado.</td></tr>`;
+      }
+      atualizarEstadoSelecao();
+    }
+
+    function aplicarBusca() {
+      const termo = String(document.getElementById("buscaItens").value || "").trim().toLowerCase();
+      const lista = !termo
+        ? itensCache
+        : itensCache.filter((item) => [item.codigo, item.ferramenta, item.categoria, item.marca_modelo, item.localizacao]
+          .join(" ")
+          .toLowerCase()
+          .includes(termo));
+      renderTabela(lista);
+    }
+
+    function persistirSelecaoLote() {
+      localStorage.setItem(LABEL_BATCH_STORAGE_KEY, JSON.stringify([...selectedItemIds]));
+    }
+
+    function restaurarSelecaoLote() {
+      try {
+        const data = JSON.parse(localStorage.getItem(LABEL_BATCH_STORAGE_KEY) || "[]");
+        if (!Array.isArray(data)) return;
+        data.forEach((id) => {
+          const numero = Number(id);
+          if (Number.isFinite(numero) && numero > 0) {
+            selectedItemIds.add(numero);
+          }
+        });
+      } catch (_) {}
+    }
+
+    function atualizarEstadoSelecao() {
+      const checkTodos = document.getElementById("checkTodosItens");
+      const selecionadosVisiveis = itensVisiveis.filter((id) => selectedItemIds.has(id)).length;
+      checkTodos.checked = itensVisiveis.length > 0 && selecionadosVisiveis === itensVisiveis.length;
+      checkTodos.indeterminate = selecionadosVisiveis > 0 && selecionadosVisiveis < itensVisiveis.length;
+
+      const imprimirLoteLink = document.querySelector('a[href="etiquetas-lote.html"]');
+      const totalSelecionado = selectedItemIds.size;
+      imprimirLoteLink.textContent = totalSelecionado > 0 ? `Imprimir lote (${totalSelecionado})` : "Imprimir lote";
+      imprimirLoteLink.classList.toggle("is-disabled", totalSelecionado === 0);
+    }
+
+    function abrirImpressaoLote(event) {
+      event.preventDefault();
+      if (!selectedItemIds.size) {
+        alert("Selecione ao menos um item para imprimir em lote.");
+        return;
+      }
+      persistirSelecaoLote();
+      const ids = [...selectedItemIds].join(",");
+      window.location.href = `/etiquetas-lote.html?ids=${encodeURIComponent(ids)}`;
+    }
+
+    async function carregarItens() {
+      try {
+        itensCache = await getJson("/api/itens");
+        aplicarBusca();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          document.getElementById("resumoItens").textContent = err.message;
+        }
+      }
+    }
+
+    document.getElementById("buscaItens").addEventListener("input", aplicarBusca);
+    document.getElementById("checkTodosItens").addEventListener("change", (event) => {
+      if (event.target.checked) {
+        itensVisiveis.forEach((id) => selectedItemIds.add(id));
+      } else {
+        itensVisiveis.forEach((id) => selectedItemIds.delete(id));
+      }
+      persistirSelecaoLote();
+      aplicarBusca();
+    });
+    document.querySelector('a[href="etiquetas-lote.html"]').addEventListener("click", abrirImpressaoLote);
+    document.getElementById("btnExportarPdf").addEventListener("click", () => {
+      window.open("/api/exportar-inventario", "_blank");
+    });
+    document.getElementById("btnFecharModal").addEventListener("click", fecharEdicao);
+    document.getElementById("btnCancelarEdicao").addEventListener("click", fecharEdicao);
+    document.getElementById("modalEdicao").addEventListener("click", (e) => {
+      if (e.target.id === "modalEdicao") {
+        fecharEdicao();
+      }
+    });
+
+    document.getElementById("formEdicao").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const mensagem = document.getElementById("mensagemEdicao");
+      const id = document.getElementById("editId").value;
+      mensagem.textContent = "Salvando alterações...";
+
+      try {
+        await getJson(`/api/itens/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            codigo: document.getElementById("editCodigo").value,
+            ferramenta: document.getElementById("editFerramenta").value,
+            categoria: document.getElementById("editCategoria").value,
+            marca_modelo: document.getElementById("editMarcaModelo").value,
+            quantidade_total: document.getElementById("editQuantidade").value,
+            localizacao: document.getElementById("editLocalizacao").value,
+            estado_inicial: document.getElementById("editEstado").value,
+            observacao: document.getElementById("editObservacao").value
+          })
+        });
+        fecharEdicao();
+        await carregarItens();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          mensagem.textContent = err.message || "Erro ao salvar alterações.";
+        }
+      }
+    });
+
+    restaurarSelecaoLote();
+    async function iniciarTela() {
+      const categorias = await carregarCategorias();
+      preencherCategorias("editCategoria", categorias);
+      const localizacoes = await carregarLocalizacoes();
+      preencherCategorias("editLocalizacao", localizacoes, "Selecione uma localização");
+      await carregarItens();
+    }
+
+    window.addEventListener("focus", async () => {
+      const categorias = await carregarCategorias();
+      preencherCategorias("editCategoria", categorias);
+      const localizacoes = await carregarLocalizacoes();
+      preencherCategorias("editLocalizacao", localizacoes, "Selecione uma localização");
+    });
+
+    iniciarTela();
+  </script>
+</body>
+</html>

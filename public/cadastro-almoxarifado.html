@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastrar Material | Almoxarifado | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+        <p>Sistema de Inventário</p>
+      </a>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
+        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário</span></a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="cadastro-almoxarifado.html" class="ativo"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Cadastrar Material</span></a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Movimentações</span></a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span><span class="sidebar-link-label">Auditoria</span></a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span><span class="sidebar-link-label">Configurações</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span><span class="sidebar-link-label">Sair</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Almoxarifado</span>
+          <h2>Cadastrar material de consumo</h2>
+          <p>Cadastre materiais consumíveis de materiais de consumo, como parafusos, porcas, arruelas, arruelas de pressão e itens de reposição.</p>
+        </div>
+      </header>
+
+      <div class="container tool-grid">
+        <section class="painel-form tool-panel">
+          <h2>Novo material</h2>
+          <p class="tool-panel-copy">Esse cadastro alimenta apenas o inventário próprio de materiais de consumo. O código é gerado automaticamente no padrão ALM-0001.</p>
+          <form id="formAlmoxItem" autocomplete="off" class="tool-form">
+            <div class="form-group">
+              <label>Código</label>
+              <input type="text" value="Gerado automaticamente no padrão ALM-0001" disabled>
+            </div>
+            <div class="form-group">
+              <label for="ferramenta">Material</label>
+              <input id="ferramenta" name="ferramenta" type="text" autocomplete="off" placeholder="Ex.: Parafuso sextavado 1/4" required>
+            </div>
+            <div class="form-group">
+              <label for="categoria">Categoria</label>
+              <select id="categoria" name="categoria"></select>
+            </div>
+            <div class="form-group">
+              <label for="marca_modelo">Marca / Especificação</label>
+              <input id="marca_modelo" name="marca_modelo" type="text" autocomplete="off" placeholder="Ex.: Zincado, M8, inox, rosca soberba">
+            </div>
+            <div class="form-group">
+              <label for="quantidade_total">Quantidade inicial</label>
+              <input id="quantidade_total" name="quantidade_total" type="number" min="0" step="1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="unidade_medida">Unidade de medida</label>
+              <select id="unidade_medida" name="unidade_medida">
+                <option value="un">Unidade</option>
+                <option value="pct">Pacote</option>
+                <option value="cx">Caixa</option>
+                <option value="kg">Quilo</option>
+                <option value="m">Metro</option>
+                <option value="lt">Litro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="embalagem">Embalagem</label>
+              <input id="embalagem" name="embalagem" type="text" autocomplete="off" placeholder="Ex.: Caixa com 100 un, pacote com 1 kg">
+            </div>
+            <div class="form-group">
+              <label for="estoque_minimo">Estoque mínimo</label>
+              <input id="estoque_minimo" name="estoque_minimo" type="number" min="0" step="1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="fornecedor">Fornecedor</label>
+              <input id="fornecedor" name="fornecedor" type="text" autocomplete="off" placeholder="Ex.: Casa dos Parafusos">
+            </div>
+            <div class="form-group">
+              <label for="localizacao">Localização</label>
+              <input id="localizacao" name="localizacao" type="text" value="Almoxarifado" readonly>
+            </div>
+            <div class="form-group">
+              <label for="estado_inicial">Condição</label>
+              <input id="estado_inicial" name="estado_inicial" type="text" autocomplete="off" placeholder="Ex.: Novo, em estoque, lote aberto">
+            </div>
+            <div class="form-group">
+              <label for="observacao">Observação</label>
+              <textarea id="observacao" name="observacao" rows="4" autocomplete="off" placeholder="Ex.: Caixa com 100 unidades, uso em manutenção, bitola específica"></textarea>
+            </div>
+            <div class="tool-actions">
+              <button type="submit" class="btn-primary tool-primary-btn">Salvar material</button>
+              <a href="almoxarifado.html" class="btn-secondary tool-secondary-link">Voltar aos materiais de consumo</a>
+            </div>
+          </form>
+          <p id="mensagemCadastroAlmox" class="tool-status"></p>
+        </section>
+
+        <section class="painel-form tool-panel tool-panel-secondary">
+          <h2>Exemplos de uso</h2>
+          <p class="tool-panel-copy">Use esse cadastro para materiais de consumo e reposição de materiais de consumo.</p>
+          <div class="inventory-summary-grid">
+            <article class="inventory-summary-card">
+              <span class="inventory-summary-label">Fixação</span>
+              <strong>Parafusos, porcas e arruelas</strong>
+            </article>
+            <article class="inventory-summary-card">
+              <span class="inventory-summary-label">Montagem</span>
+              <strong>Buchas, abraçadeiras e rebites</strong>
+            </article>
+            <article class="inventory-summary-card">
+              <span class="inventory-summary-label">Reposição</span>
+              <strong>Insumos de manutenção e consumo</strong>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const DEFAULT_CATEGORY_OPTIONS = [
+      "Fixação",
+      "Montagem",
+      "Vedação",
+      "Elétrica",
+      "Hidráulica",
+      "Pintura",
+      "Soldagem",
+      "Limpeza e manutenção",
+      "Consumível",
+      "Acessório"
+    ];
+
+    async function getJson(url, options = {}) {
+      const res = await fetch(url, { credentials: "same-origin", ...options });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    function redirecionarErro(err) {
+      if (err?.status === 401) {
+        window.location.href = "/login.html";
+        return true;
+      }
+      if (err?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+        return true;
+      }
+      return false;
+    }
+
+    function preencherCategorias(categorias) {
+      const select = document.getElementById("categoria");
+      select.innerHTML = '<option value="">Selecione uma categoria</option>';
+      categorias.forEach((categoria) => {
+        const option = document.createElement("option");
+        option.value = categoria;
+        option.textContent = categoria;
+        select.appendChild(option);
+      });
+    }
+
+    async function carregarCategorias() {
+      try {
+        const dados = await getJson("/api/categorias", { cache: "no-store" });
+        const categorias = Array.isArray(dados.categorias) ? dados.categorias : [];
+        const vistos = new Set();
+        const final = [...DEFAULT_CATEGORY_OPTIONS, ...categorias].filter((item) => {
+          const chave = String(item || "").trim().toLowerCase();
+          if (!chave || vistos.has(chave)) return false;
+          vistos.add(chave);
+          return true;
+        });
+        preencherCategorias(final);
+      } catch (_) {
+        preencherCategorias(DEFAULT_CATEGORY_OPTIONS);
+      }
+    }
+
+    document.getElementById("formAlmoxItem").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const msg = document.getElementById("mensagemCadastroAlmox");
+      msg.textContent = "Salvando material...";
+
+      try {
+        const body = Object.fromEntries(new FormData(event.target).entries());
+        const data = await getJson("/api/almoxarifado/itens", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        msg.textContent = `Material salvo com sucesso. Código gerado: ${data.codigo}`;
+        event.target.reset();
+        document.getElementById("localizacao").value = "Almoxarifado";
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          msg.textContent = err.message || "Não foi possível salvar o material.";
+        }
+      }
+    });
+
+    carregarCategorias();
+  </script>
+</body>
+</html>

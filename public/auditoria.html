@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoria | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .auditoria-layout {
+      display: grid;
+      gap: 24px;
+    }
+
+    .auditoria-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 28px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+      padding: 28px;
+    }
+
+    .auditoria-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .auditoria-header-row h2 {
+      margin: 0;
+    }
+
+    .auditoria-header-copy {
+      max-width: 620px;
+    }
+
+    .auditoria-header-copy p {
+      margin: 8px 0 0;
+      color: #64748b;
+      font-size: 0.98rem;
+      line-height: 1.5;
+    }
+
+    .auditoria-filter-shell {
+      display: grid;
+      gap: 18px;
+      padding: 22px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .auditoria-toolbar {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .auditoria-field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .auditoria-field label {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #475569;
+    }
+
+    .auditoria-field input,
+    .auditoria-field select {
+      min-height: 52px;
+      border-radius: 18px;
+      border: 1px solid #d9dee7;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      padding: 0 18px;
+      font-size: 0.98rem;
+      color: #0f172a;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .auditoria-field input:focus,
+    .auditoria-field select:focus {
+      border-color: rgba(220, 38, 38, 0.35);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.08);
+      outline: none;
+    }
+
+    .auditoria-field-usuario,
+    .auditoria-field-acao {
+      grid-column: span 3;
+    }
+
+    .auditoria-field-data {
+      grid-column: span 2;
+    }
+
+    .auditoria-field-limite {
+      grid-column: span 1;
+    }
+
+    .auditoria-buttons {
+      grid-column: span 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+      justify-content: flex-end;
+    }
+
+    .auditoria-buttons button {
+      width: 100%;
+      min-width: 0;
+      min-height: 52px;
+      border-radius: 18px;
+      font-size: 0.98rem;
+    }
+
+    .auditoria-buttons button:last-child {
+      background: #111c34;
+      box-shadow: none;
+    }
+
+    .auditoria-buttons button:last-child:hover {
+      background: #1a2848;
+      transform: translateY(-1px);
+    }
+
+    .auditoria-chip-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .auditoria-status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.03), rgba(239, 68, 68, 0.05));
+      border: 1px solid rgba(15, 23, 42, 0.05);
+    }
+
+    .auditoria-status-bar .texto-ajuda {
+      margin: 0;
+    }
+
+    .auditoria-count {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #475569;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .auditoria-filter-meta {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .auditoria-filter-tip {
+      color: #64748b;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .auditoria-table-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .auditoria-table-head h2 {
+      margin: 0;
+    }
+
+    .auditoria-table-head p {
+      margin: 0;
+      color: #64748b;
+    }
+
+    .auditoria-table-shell {
+      overflow: auto;
+      border-radius: 24px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: #fff;
+    }
+
+    .auditoria-table-shell table {
+      width: 100%;
+      min-width: 960px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .auditoria-table-shell thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      color: #0f172a;
+      font-size: 0.88rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding: 18px 20px;
+    }
+
+    .auditoria-table-shell tbody td {
+      padding: 18px 20px;
+      border-bottom: 1px solid #eef2f7;
+      vertical-align: top;
+    }
+
+    .auditoria-table-shell tbody tr:nth-child(even) {
+      background: rgba(248, 250, 252, 0.8);
+    }
+
+    .auditoria-table-shell tbody tr:hover {
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .auditoria-col-data {
+      white-space: nowrap;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .auditoria-col-usuario {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .auditoria-col-acao {
+      white-space: nowrap;
+    }
+
+    .auditoria-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .auditoria-badge-sucesso {
+      color: #166534;
+      background: rgba(34, 197, 94, 0.14);
+    }
+
+    .auditoria-badge-falha {
+      color: #b91c1c;
+      background: rgba(239, 68, 68, 0.14);
+    }
+
+    .auditoria-badge-neutro {
+      color: #334155;
+      background: rgba(148, 163, 184, 0.18);
+    }
+
+    .auditoria-detalhes {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+      color: #334155;
+      max-width: 520px;
+    }
+
+    @media (max-width: 1100px) {
+      .auditoria-field-usuario,
+      .auditoria-field-acao,
+      .auditoria-field-data,
+      .auditoria-field-limite,
+      .auditoria-buttons {
+        grid-column: span 6;
+      }
+
+      .auditoria-buttons {
+        flex-direction: row;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .auditoria-card {
+        padding: 20px;
+        border-radius: 22px;
+      }
+
+      .auditoria-field-usuario,
+      .auditoria-field-acao,
+      .auditoria-field-data,
+      .auditoria-field-limite,
+      .auditoria-buttons {
+        grid-column: span 12;
+      }
+
+      .auditoria-filter-shell {
+        padding: 18px;
+        border-radius: 20px;
+      }
+
+      .auditoria-buttons {
+        flex-direction: column;
+        justify-content: stretch;
+      }
+
+      .auditoria-buttons button {
+        width: 100%;
+      }
+
+      .auditoria-filter-meta {
+        align-items: stretch;
+      }
+
+      .auditoria-count {
+        width: 100%;
+        text-align: center;
+      }
+
+      .auditoria-table-shell {
+        border-radius: 18px;
+      }
+    }
+  </style>
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <p>Sistema de Inventário</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html" class="ativo"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <h2>Auditoria</h2>
+        <p>Rastreamento de eventos e acessos</p>
+      </header>
+
+      <div class="container auditoria-layout">
+        <section class="auditoria-card">
+          <div class="auditoria-header-row">
+            <div class="auditoria-header-copy">
+              <h2>Filtros de auditoria</h2>
+              <p>Refine os eventos por usuário, ação e período para localizar acessos e ocorrências com mais rapidez.</p>
+            </div>
+          </div>
+
+          <div class="auditoria-filter-shell">
+            <div class="auditoria-toolbar">
+              <div class="auditoria-field auditoria-field-usuario">
+                <label for="filtroUsuario">Usuário</label>
+                <input type="text" id="filtroUsuario" placeholder="Filtrar por usuário">
+              </div>
+
+              <div class="auditoria-field auditoria-field-acao">
+                <label for="filtroAcao">Ação</label>
+                <input type="text" id="filtroAcao" placeholder="Filtrar por ação">
+              </div>
+
+              <div class="auditoria-field auditoria-field-data">
+                <label for="filtroDataInicio">Data inicial</label>
+                <input type="date" id="filtroDataInicio" title="Data inicial">
+              </div>
+
+              <div class="auditoria-field auditoria-field-data">
+                <label for="filtroDataFim">Data final</label>
+                <input type="date" id="filtroDataFim" title="Data final">
+              </div>
+
+              <div class="auditoria-field auditoria-field-limite">
+                <label for="filtroLimite">Qtd.</label>
+                <select id="filtroLimite" title="Quantidade por página">
+                  <option value="25" selected>25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+
+              <div class="auditoria-buttons">
+                <button type="button" id="btnAtualizarAuditoria">Atualizar</button>
+                <button type="button" id="btnExportarAuditoria">Exportar CSV</button>
+              </div>
+            </div>
+
+            <div class="auditoria-filter-meta">
+              <div class="auditoria-chip-row">
+                <button type="button" class="chip-status ativo" data-acao-rapida="">Todos</button>
+                <button type="button" class="chip-status" data-acao-rapida="LOGIN_SUCESSO">Login Sucesso</button>
+                <button type="button" class="chip-status" data-acao-rapida="LOGIN_FALHA">Login Falha</button>
+              </div>
+
+              <div class="auditoria-status-bar">
+                <p class="auditoria-filter-tip">Cruze filtros e mantenha o histórico limpo para exportação e conferência.</p>
+                <p id="statusAuditoria" class="texto-ajuda auditoria-count"></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="auditoria-card">
+          <div class="auditoria-table-head">
+            <h2>Registro de eventos</h2>
+            <p>Histórico consolidado dos principais acessos e ações do sistema.</p>
+          </div>
+          <div class="auditoria-table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Usuário</th>
+                  <th>Ação</th>
+                  <th>Entidade</th>
+                  <th>ID</th>
+                  <th>Detalhes</th>
+                </tr>
+              </thead>
+              <tbody id="listaAuditoria"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function formatarDataPtBr(dataTexto) {
+      if (!dataTexto) return "-";
+      const iso = String(dataTexto).replace(" ", "T");
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return dataTexto;
+      return d.toLocaleString("pt-BR");
+    }
+
+    function formatarAcao(acao) {
+      const mapa = {
+        LOGIN_SUCESSO: "Login com sucesso",
+        LOGIN_FALHA: "Falha no login"
+      };
+      return mapa[acao] || acao || "-";
+    }
+
+    function formatarEntidadeId(evento) {
+      const id = evento?.entidade_id;
+      if (id === null || id === undefined || id === "") return "-";
+      if (evento?.entidade === "auth") {
+        const numero = Number(id);
+        if (Number.isFinite(numero) && numero > 0) {
+          return `USR-${String(numero).padStart(4, "0")}`;
+        }
+      }
+      return String(id);
+    }
+
+    function getClasseAcao(acao) {
+      const valor = String(acao || "").toUpperCase();
+      if (valor === "LOGIN_SUCESSO") return "auditoria-badge auditoria-badge-sucesso";
+      if (valor === "LOGIN_FALHA") return "auditoria-badge auditoria-badge-falha";
+      return "auditoria-badge auditoria-badge-neutro";
+    }
+
+    async function api(url) {
+      const res = await fetch(url);
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    function tentarJson(detalhes) {
+      if (!detalhes) return null;
+      if (typeof detalhes === "object") return detalhes;
+      try {
+        return JSON.parse(detalhes);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function formatarDetalhes(detalhes, evento = null) {
+      if (!detalhes) return "-";
+      const obj = tentarJson(detalhes);
+
+      if (obj && evento?.entidade === "auth" && String(evento?.acao || "").startsWith("LOGIN_")) {
+        const usuario = obj.usuario || obj.usuario_tentativa || "-";
+        const perfil = obj.perfil || "-";
+        const ip = obj.ip || "-";
+        return `Usuário: ${usuario} | Perfil: ${perfil} | IP: ${ip}`;
+      }
+
+      if (obj) return JSON.stringify(obj, null, 2);
+      if (typeof detalhes === "string") return detalhes;
+      try {
+        return JSON.stringify(detalhes, null, 2);
+      } catch (_) {
+        return "-";
+      }
+    }
+
+    function obterQueryFiltros() {
+      const params = new URLSearchParams();
+      const limite = String(document.getElementById("filtroLimite").value || "25");
+      params.set("limit", limite);
+      const usuario = String(document.getElementById("filtroUsuario").value || "").trim();
+      const acao = String(document.getElementById("filtroAcao").value || "").trim();
+      const dataInicio = String(document.getElementById("filtroDataInicio").value || "").trim();
+      const dataFim = String(document.getElementById("filtroDataFim").value || "").trim();
+
+      if (usuario) params.set("usuario", usuario);
+      if (acao) params.set("acao", acao);
+      if (dataInicio) params.set("data_inicio", dataInicio);
+      if (dataFim) params.set("data_fim", dataFim);
+      return params.toString();
+    }
+
+    function renderEventos(eventos) {
+      const tbody = document.getElementById("listaAuditoria");
+      tbody.innerHTML = "";
+      eventos.forEach((e) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="auditoria-col-data">${formatarDataPtBr(e.data)}</td>
+          <td class="auditoria-col-usuario">${e.usuario || "-"}</td>
+          <td class="auditoria-col-acao"><span class="${getClasseAcao(e.acao)}">${formatarAcao(e.acao)}</span></td>
+          <td>${e.entidade || "-"}</td>
+          <td>${formatarEntidadeId(e)}</td>
+          <td><div class="auditoria-detalhes">${formatarDetalhes(e.detalhes, e)}</div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("statusAuditoria").textContent = `${eventos.length} registro(s) exibido(s).`;
+    }
+
+    async function carregarAuditoria() {
+      const status = document.getElementById("statusAuditoria");
+      status.textContent = "Carregando registros...";
+      try {
+        const query = obterQueryFiltros();
+        const eventos = await api(`/api/auditoria?${query}`);
+        renderEventos(eventos);
+      } catch (e) {
+        if (e.status === 401) return window.location.href = "/login.html";
+        if (e.status === 403) return window.location.href = "/acesso-negado.html";
+        status.textContent = e.message || "Erro ao carregar auditoria.";
+      }
+    }
+
+    function exportarAuditoria() {
+      const query = obterQueryFiltros();
+      window.open(`/api/auditoria/exportar-csv?${query}`, "_blank");
+    }
+
+    function restaurarPreferenciaLimite() {
+      const seletor = document.getElementById("filtroLimite");
+      const salvo = localStorage.getItem("auditoria_limit");
+      if (salvo && ["25", "50", "100"].includes(salvo)) {
+        seletor.value = salvo;
+      }
+    }
+
+    function configurarFiltrosRapidosAcao() {
+      const chips = Array.from(document.querySelectorAll(".chip-status[data-acao-rapida]"));
+      const inputAcao = document.getElementById("filtroAcao");
+
+      function sincronizarChipAtivo() {
+        const valor = String(inputAcao.value || "").trim().toUpperCase();
+        chips.forEach((chip) => {
+          const alvo = String(chip.dataset.acaoRapida || "").toUpperCase();
+          const ativo = alvo === valor || (!alvo && !valor);
+          chip.classList.toggle("ativo", ativo);
+        });
+      }
+
+      chips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          inputAcao.value = chip.dataset.acaoRapida || "";
+          sincronizarChipAtivo();
+          carregarAuditoria();
+        });
+      });
+
+      inputAcao.addEventListener("input", sincronizarChipAtivo);
+      sincronizarChipAtivo();
+    }
+
+    document.getElementById("btnAtualizarAuditoria").addEventListener("click", carregarAuditoria);
+    document.getElementById("btnExportarAuditoria").addEventListener("click", exportarAuditoria);
+    document.getElementById("filtroLimite").addEventListener("change", () => {
+      const limite = document.getElementById("filtroLimite").value;
+      localStorage.setItem("auditoria_limit", limite);
+      carregarAuditoria();
+    });
+
+    restaurarPreferenciaLimite();
+    configurarFiltrosRapidosAcao();
+    carregarAuditoria();
+  </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

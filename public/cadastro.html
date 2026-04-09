@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar Conta | UniqStock</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="login-body">
+    <main class="login-page">
+        <section class="login-card">
+            <div class="login-header">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo-light"></a>
+                <p>Criação de acesso</p>
+            </div>
+
+            <form id="cadastroForm" class="login-form">
+                <div class="form-group">
+                    <label for="usuario">Novo usuário</label>
+                    <input type="text" id="usuario" name="usuario" placeholder="Escolha seu usuário" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" placeholder="Mínimo 8, com maiúscula, minúscula, número e símbolo" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmarSenha">Confirmar senha</label>
+                    <input type="password" id="confirmarSenha" name="confirmarSenha" placeholder="Repita a senha" required />
+                </div>
+
+                <button type="submit" class="btn-primary">Criar conta</button>
+                <p id="cadastroMensagem" class="login-mensagem"></p>
+                <p class="login-link"><a href="/login.html">Voltar para login</a></p>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        const cadastroForm = document.getElementById("cadastroForm");
+        const cadastroMensagem = document.getElementById("cadastroMensagem");
+
+        function validarSenhaForteLocal(senha) {
+            if (senha.length < 8) return "Senha deve ter ao menos 8 caracteres";
+            if (!/[A-Z]/.test(senha)) return "Senha deve conter ao menos 1 letra maiúscula";
+            if (!/[a-z]/.test(senha)) return "Senha deve conter ao menos 1 letra minúscula";
+            if (!/[0-9]/.test(senha)) return "Senha deve conter ao menos 1 número";
+            if (!/[^A-Za-z0-9]/.test(senha)) return "Senha deve conter ao menos 1 caractere especial";
+            return "";
+        }
+
+        async function validarAcessoCadastro() {
+            try {
+                const resposta = await fetch("/api/me", { credentials: "same-origin" });
+                const dados = await resposta.json();
+                if (!resposta.ok || !dados?.user) {
+                    window.location.href = "/login.html";
+                    return false;
+                }
+
+                if (dados.user.perfil !== "admin") {
+                    window.location.href = "/acesso-negado.html";
+                    return false;
+                }
+                return true;
+            } catch (_) {
+                window.location.href = "/login.html";
+                return false;
+            }
+        }
+
+        cadastroForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const acessoOk = await validarAcessoCadastro();
+            if (!acessoOk) return;
+
+            const usuario = document.getElementById("usuario").value.trim();
+            const senha = document.getElementById("senha").value;
+            const confirmarSenha = document.getElementById("confirmarSenha").value;
+
+            if (senha !== confirmarSenha) {
+                cadastroMensagem.textContent = "As senhas não conferem";
+                return;
+            }
+
+            const erroSenha = validarSenhaForteLocal(senha);
+            if (erroSenha) {
+                cadastroMensagem.textContent = erroSenha;
+                return;
+            }
+
+            cadastroMensagem.textContent = "Criando conta...";
+
+            try {
+                const resposta = await fetch("/api/cadastro", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ usuario, senha })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    cadastroMensagem.textContent = dados.error || "Erro ao criar conta";
+                    return;
+                }
+
+                cadastroMensagem.textContent = "Conta criada com sucesso. Redirecionando...";
+                setTimeout(() => {
+                    window.location.href = "/login.html";
+                }, 1200);
+            } catch (erro) {
+                cadastroMensagem.textContent = "Erro de conexão com o servidor";
+            }
+        });
+
+        validarAcessoCadastro();
+    </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+

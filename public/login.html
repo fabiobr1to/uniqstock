@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | UniqStock</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="login-body">
+
+    <main class="login-page">
+        <section class="login-card">
+            <div class="login-header">
+                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo-light"></a>
+                <p>Acesso ao sistema</p>
+            </div>
+
+            <form id="loginForm" class="login-form" autocomplete="off" data-form-type="other" data-lpignore="true">
+                <div class="form-group">
+                    <label for="usuario">Usuário</label>
+                    <input type="text" id="usuario" name="usuario_real" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Digite seu usuário" required readonly onfocus="this.removeAttribute('readonly');" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha_real" autocomplete="new-password" placeholder="Digite sua senha" required readonly onfocus="this.removeAttribute('readonly');" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+                </div>
+
+                <input type="text" name="fake_user" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true" />
+                <input type="password" name="fake_pass" autocomplete="new-password" style="display:none" tabindex="-1" aria-hidden="true" />
+
+                <button type="submit" class="btn-primary">Entrar</button>
+                <p id="loginMensagem" class="login-mensagem"></p>
+                <div id="loginProgress" class="login-progress" aria-hidden="true">
+                    <div id="loginProgressBar" class="login-progress-bar"></div>
+                </div>
+                <p class="login-link">Criação de usuário: somente administrador</p>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        const loginMensagem = document.getElementById("loginMensagem");
+        const loginProgress = document.getElementById("loginProgress");
+        const loginProgressBar = document.getElementById("loginProgressBar");
+        const botaoEntrar = loginForm.querySelector("button[type='submit']");
+        const campoUsuario = document.getElementById("usuario");
+        const campoSenha = document.getElementById("senha");
+        let progressoTimer = null;
+        const sufixoCampos = Date.now().toString(36);
+
+        async function verificarLicencaAntesDoLogin() {
+            try {
+                const res = await fetch("/api/licenca/status");
+                const dados = await res.json();
+                if (res.ok && dados && !dados.ativa) {
+                    window.location.href = "/ativacao.html";
+                }
+            } catch (_) {}
+        }
+
+        window.addEventListener("pageshow", () => {
+            campoUsuario.value = "";
+            campoSenha.value = "";
+        });
+
+        campoUsuario.name = `u_${sufixoCampos}`;
+        campoSenha.name = `p_${sufixoCampos}`;
+
+        function definirEstadoLogin(ativo) {
+            botaoEntrar.disabled = ativo;
+            loginForm.querySelectorAll("input").forEach((input) => {
+                input.disabled = ativo;
+            });
+        }
+
+        function iniciarProgresso() {
+            let progresso = 8;
+            loginProgress.classList.add("ativo");
+            loginProgressBar.style.width = `${progresso}%`;
+
+            progressoTimer = setInterval(() => {
+                if (progresso < 90) {
+                    progresso += Math.random() * 8;
+                    loginProgressBar.style.width = `${Math.min(90, progresso)}%`;
+                }
+            }, 180);
+        }
+
+        function finalizarProgresso(sucesso) {
+            if (progressoTimer) {
+                clearInterval(progressoTimer);
+                progressoTimer = null;
+            }
+
+            if (sucesso) {
+                loginProgressBar.style.width = "100%";
+                return;
+            }
+
+            loginProgress.classList.remove("ativo");
+            loginProgressBar.style.width = "0%";
+        }
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const usuario = document.getElementById("usuario").value.trim();
+            const senha = document.getElementById("senha").value.trim();
+
+            loginMensagem.textContent = "Entrando...";
+            definirEstadoLogin(true);
+            iniciarProgresso();
+
+            try {
+                const resposta = await fetch("/api/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ usuario, senha })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    if (dados.codigo === "LICENCA_NAO_ATIVA") {
+                        window.location.href = "/ativacao.html";
+                        return;
+                    }
+                    loginMensagem.textContent = dados.error || "Erro ao entrar";
+                    definirEstadoLogin(false);
+                    finalizarProgresso(false);
+                    return;
+                }
+
+                loginMensagem.textContent = "Acesso validado. Preparando painel...";
+                finalizarProgresso(true);
+                setTimeout(() => {
+                    window.location.href = "/dashboard.html";
+                }, 3200);
+            } catch (erro) {
+                loginMensagem.textContent = "Erro de conexão com o servidor";
+                definirEstadoLogin(false);
+                finalizarProgresso(false);
+            }
+        });
+
+        verificarLicencaAntesDoLogin();
+    </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
