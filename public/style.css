@@ -1100,11 +1100,17 @@ table{
 }
 
 .inventory-modal-actions{
-  display:flex;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 220px));
   gap:10px;
-  justify-content:flex-end;
-  flex-wrap:wrap;
+  justify-content:end;
   margin-top:18px;
+}
+
+.inventory-modal-actions button{
+  width:220px;
+  max-width:100%;
+  white-space:nowrap;
 }
 
 .ferramentaria-grid{
@@ -1972,6 +1978,14 @@ tbody td.col-num{
 
   .inventory-modal-head{
     flex-direction:column;
+  }
+
+  .inventory-modal-actions{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .inventory-modal-actions button{
+    width:100%;
   }
 
   form{

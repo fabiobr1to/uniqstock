@@ -22,7 +22,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
 // =========================
-// PASTAS NECESSÃRIAS
+// PASTAS NECESSÁRIAS
 // =========================
 const RUNTIME_BASE_DIR = process.env.UNIQSTOCK_RUNTIME_DIR
   ? path.resolve(process.env.UNIQSTOCK_RUNTIME_DIR)
@@ -51,10 +51,6 @@ const supabase = USE_SUPABASE_LICENSE
       auth: { persistSession: false, autoRefreshToken: false }
     })
   : null;
-
-if (DB_CLIENT === "postgres") {
-  console.warn("DB_CLIENT=postgres detectado. Conexao e schema inicial preparados; adaptacoes de queries e migracao de dados ainda pendentes.");
-}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -119,7 +115,7 @@ function gerarChaveLicenca(cliente, expiraEm, codigoMaquina = "") {
   const clienteLimpo = String(cliente || "").trim();
   const dataIso = normalizarDataIso(expiraEm);
   if (!clienteLimpo || !dataIso) {
-    throw new Error("Cliente e data de expiraÃ§Ã£o vÃ¡lidos sÃ£o obrigatÃ³rios");
+    throw new Error("Cliente e data de expiração válidos são obrigatórios");
   }
   const payload = {
     v: 1,
@@ -137,7 +133,7 @@ function validarChaveLicenca(chave, codigoMaquinaLocal = "") {
   const texto = String(chave || "").trim();
   const partes = texto.split(".");
   if (partes.length !== 3 || partes[0] !== "USK1") {
-    return { ok: false, motivo: "Formato de chave invÃ¡lido" };
+    return { ok: false, motivo: "Formato de chave inválido" };
   }
 
   const payloadB64 = partes[1];
@@ -148,14 +144,14 @@ function validarChaveLicenca(chave, codigoMaquinaLocal = "") {
 
   if (assinaturaBuf.length !== esperadoBuf.length ||
       !crypto.timingSafeEqual(assinaturaBuf, esperadoBuf)) {
-    return { ok: false, motivo: "Assinatura invÃ¡lida" };
+    return { ok: false, motivo: "Assinatura inválida" };
   }
 
   let payload;
   try {
     payload = JSON.parse(fromBase64Url(payloadB64));
   } catch (_) {
-    return { ok: false, motivo: "Payload da chave invÃ¡lido" };
+    return { ok: false, motivo: "Payload da chave inválido" };
   }
 
   const dataIso = normalizarDataIso(payload?.exp);
@@ -166,10 +162,10 @@ function validarChaveLicenca(chave, codigoMaquinaLocal = "") {
     return { ok: false, motivo: "Dados da chave incompletos" };
   }
   if (codigoMaquinaChave && codigoMaquinaChave !== codigoMaquina) {
-    return { ok: false, motivo: "LicenÃ§a vinculada a outra mÃ¡quina" };
+    return { ok: false, motivo: "Licença vinculada a outra máquina" };
   }
   if (calcularDiasRestantes(dataIso) < 0) {
-    return { ok: false, motivo: "LicenÃ§a expirada" };
+    return { ok: false, motivo: "Licença expirada" };
   }
 
   return { ok: true, payload: { cliente, exp: dataIso, mch: codigoMaquinaChave || null } };
@@ -183,7 +179,7 @@ async function obterStatusLicencaLocal() {
     if (!ativa || !chave) {
       return {
         ativa: false,
-        motivo: "LicenÃ§a nÃ£o ativada",
+        motivo: "Licença não ativada",
         codigo_maquina: codigoMaquina,
         provedor: "local"
       };
@@ -211,7 +207,7 @@ async function obterStatusLicencaLocal() {
   } catch (e) {
     return {
       ativa: false,
-      motivo: "NÃ£o foi possÃ­vel validar a licenÃ§a",
+      motivo: "Não foi possível validar a licença",
       codigo_maquina: gerarCodigoMaquina(),
       provedor: "local"
     };
@@ -248,7 +244,7 @@ async function obterStatusLicencaCacheSupabase(codigoMaquina) {
   if (diasSemValidar > OFFLINE_LICENSE_GRACE_DAYS) {
     return {
       ativa: false,
-      motivo: `LicenÃ§a offline expirada apÃ³s ${OFFLINE_LICENSE_GRACE_DAYS} dia(s) sem validaÃ§Ã£o`,
+      motivo: `Licença offline expirada após ${OFFLINE_LICENSE_GRACE_DAYS} dia(s) sem validação`,
       codigo_maquina: codigoMaquina,
       provedor: "supabase-cache"
     };
@@ -258,7 +254,7 @@ async function obterStatusLicencaCacheSupabase(codigoMaquina) {
   if (diasRestantes < 0) {
     return {
       ativa: false,
-      motivo: "LicenÃ§a expirada",
+      motivo: "Licença expirada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase-cache"
     };
@@ -282,7 +278,7 @@ async function obterStatusLicencaSupabase() {
   if (!chave) {
     return {
       ativa: false,
-      motivo: "LicenÃ§a nÃ£o ativada",
+      motivo: "Licença não ativada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -299,7 +295,7 @@ async function obterStatusLicencaSupabase() {
     if (cache) return cache;
     return {
       ativa: false,
-      motivo: "Servidor de licenÃ§as indisponÃ­vel",
+      motivo: "Servidor de licenças indisponível",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -308,7 +304,7 @@ async function obterStatusLicencaSupabase() {
   if (!data) {
     return {
       ativa: false,
-      motivo: "Chave nÃ£o encontrada no servidor de licenÃ§as",
+      motivo: "Chave não encontrada no servidor de licenças",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -318,7 +314,7 @@ async function obterStatusLicencaSupabase() {
   if (status === "revoked" || status === "suspended") {
     return {
       ativa: false,
-      motivo: "LicenÃ§a revogada",
+      motivo: "Licença revogada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -328,7 +324,7 @@ async function obterStatusLicencaSupabase() {
   if (!expIso || calcularDiasRestantes(expIso) < 0) {
     return {
       ativa: false,
-      motivo: "LicenÃ§a expirada",
+      motivo: "Licença expirada",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -338,7 +334,7 @@ async function obterStatusLicencaSupabase() {
   if (!machineCodeDb) {
     return {
       ativa: false,
-      motivo: "LicenÃ§a ainda nÃ£o ativada neste dispositivo",
+      motivo: "Licença ainda não ativada neste dispositivo",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -347,7 +343,7 @@ async function obterStatusLicencaSupabase() {
   if (machineCodeDb !== codigoMaquina) {
     return {
       ativa: false,
-      motivo: "LicenÃ§a vinculada a outra mÃ¡quina",
+      motivo: "Licença vinculada a outra máquina",
       codigo_maquina: codigoMaquina,
       provedor: "supabase"
     };
@@ -398,26 +394,26 @@ async function ativarLicencaSupabase(chave) {
     .maybeSingle();
 
   if (error) {
-    return { ok: false, error: "Servidor de licenÃ§as indisponÃ­vel", status: 503 };
+    return { ok: false, error: "Servidor de licenças indisponível", status: 503 };
   }
 
   if (!data) {
-    return { ok: false, error: "Chave nÃ£o encontrada", status: 400 };
+    return { ok: false, error: "Chave não encontrada", status: 400 };
   }
 
   const status = String(data.status || "").toLowerCase();
   if (status === "revoked" || status === "suspended") {
-    return { ok: false, error: "LicenÃ§a revogada", status: 400 };
+    return { ok: false, error: "Licença revogada", status: 400 };
   }
 
   const expIso = normalizarDataIso(String(data.expires_at || "").slice(0, 10));
   if (!expIso || calcularDiasRestantes(expIso) < 0) {
-    return { ok: false, error: "LicenÃ§a expirada", status: 400 };
+    return { ok: false, error: "Licença expirada", status: 400 };
   }
 
   const machineCodeDb = String(data.machine_code || "").trim().toUpperCase();
   if (machineCodeDb && machineCodeDb !== codigoMaquina) {
-    return { ok: false, error: "LicenÃ§a vinculada a outra mÃ¡quina", status: 400 };
+    return { ok: false, error: "Licença vinculada a outra máquina", status: 400 };
   }
 
   const payloadUpdate = {
@@ -432,7 +428,7 @@ async function ativarLicencaSupabase(chave) {
     .eq("license_key", chave);
 
   if (updateError) {
-    return { ok: false, error: "NÃ£o foi possÃ­vel ativar a licenÃ§a", status: 500 };
+    return { ok: false, error: "Não foi possível ativar a licença", status: 500 };
   }
 
   await definirConfigValor("licenca_ativa", "1");
@@ -496,7 +492,7 @@ app.use(async (req, res, next) => {
 
   if (req.path.startsWith("/api/")) {
     return res.status(403).json({
-      error: "LicenÃ§a nÃ£o ativada",
+      error: "Licença não ativada",
       codigo: "LICENCA_NAO_ATIVA",
       motivo: status.motivo
     });
@@ -509,7 +505,7 @@ app.use(async (req, res, next) => {
   return next();
 });
 
-// Protege a pÃ¡gina de permissÃµes no servidor (acesso direto por URL)
+// Protege a página de permissões no servidor (acesso direto por URL)
 app.get("/permissoes.html", (req, res) => {
   if (!req.session || !req.session.user) {
     return res.redirect("/login.html");
@@ -585,7 +581,7 @@ function parseDeclaredXmlEncoding(buffer) {
 function scoreDecodedText(text) {
   const value = String(text || "");
   const replacement = (value.match(/\uFFFD/g) || []).length;
-  const mojibake = (value.match(/Ãƒ.|Ã‚.|Ã¢â‚¬|Ã¢â‚¬Å“|Ã¢â‚¬Â|Ã¢â‚¬â„¢|Ã¢â‚¬Â¢/g) || []).length;
+  const mojibake = (value.match(/\u00C3.|\u00C2.|\u00E2\u20AC|\u00E2\u20AC\u0153|\u00E2\u20AC\u009D|\u00E2\u20AC\u2122|\u00E2\u20AC\u00A2/g) || []).length;
   const controls = Array.from(value).filter((char) => {
     const code = char.charCodeAt(0);
     return (code >= 0 && code <= 8) || code === 11 || code === 12 || (code >= 14 && code <= 31);
@@ -644,23 +640,23 @@ async function parseCsvRowsFromBuffer(buffer) {
 
 const CATEGORIAS_PADRAO = [
   "Ferramenta manual",
-  "Ferramenta elÃ©trica",
+  "Ferramenta elétrica",
   "Ferramenta a bateria",
-  "Ferramenta pneumÃ¡tica",
-  "Ferramenta hidrÃ¡ulica",
-  "Ferramenta a combustÃ£o",
-  "Instrumento de mediÃ§Ã£o",
+  "Ferramenta pneumática",
+  "Ferramenta hidráulica",
+  "Ferramenta a combustão",
+  "Instrumento de medição",
   "EPI",
-  "AcessÃ³rio",
-  "ConsumÃ­vel",
-  "Limpeza e manutenÃ§Ã£o"
+  "Acessório",
+  "Consumível",
+  "Limpeza e manutenção"
 ];
 
 const LOCALIZACOES_PADRAO = [
   "Ferramentaria",
   "Almoxarifado",
   "Sala PRZ",
-  "VeÃ­culo",
+  "Veículo",
   "Obra",
   "Estoque externo"
 ];
@@ -723,7 +719,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("medidor") ||
     categoriaBase.includes("medic")
   ) {
-    return "Instrumento de mediÃ§Ã£o";
+    return "Instrumento de medição";
   }
 
   if (
@@ -737,7 +733,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("pneumatic") ||
     categoriaBase.includes("pneumatic")
   ) {
-    return "Ferramenta pneumÃ¡tica";
+    return "Ferramenta pneumática";
   }
 
   if (ferramentaBase.includes("catraca") || categoriaBase.includes("catraca")) {
@@ -748,7 +744,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("hidraulic") ||
     categoriaBase.includes("hidraulic")
   ) {
-    return "Ferramenta hidrÃ¡ulica";
+    return "Ferramenta hidráulica";
   }
 
   if (
@@ -761,7 +757,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     categoriaBase.includes("diesel") ||
     categoriaBase.includes("combust")
   ) {
-    return "Ferramenta a combustÃ£o";
+    return "Ferramenta a combustão";
   }
 
   if (
@@ -773,7 +769,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("eletrica") ||
     categoriaBase.includes("eletric")
   ) {
-    return "Ferramenta elÃ©trica";
+    return "Ferramenta elétrica";
   }
 
   if (ferramentaBase.includes("epi") || categoriaBase === "epi") {
@@ -786,7 +782,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("extensao") ||
     ferramentaBase.includes("conector")
   ) {
-    return "AcessÃ³rio";
+    return "Acessório";
   }
 
   if (
@@ -796,7 +792,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("oleo") ||
     ferramentaBase.includes("graxa")
   ) {
-    return "ConsumÃ­vel";
+    return "Consumível";
   }
 
   if (
@@ -805,7 +801,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     ferramentaBase.includes("desengripante") ||
     ferramentaBase.includes("limpeza")
   ) {
-    return "Limpeza e manutenÃ§Ã£o";
+    return "Limpeza e manutenção";
   }
 
   if (
@@ -820,7 +816,7 @@ function categoriaPadronizada(categoriaInformada, ferramentaInformada = "") {
     return "Ferramenta manual";
   }
 
-  return "AcessÃ³rio";
+  return "Acessório";
 }
 
 async function normalizarCategoriasExistentes() {
@@ -836,9 +832,9 @@ async function normalizarCategoriasExistentes() {
 function validarSenhaForte(senha) {
   const texto = String(senha || "");
   if (texto.length < 8) return "Senha deve ter ao menos 8 caracteres";
-  if (!/[A-Z]/.test(texto)) return "Senha deve conter ao menos 1 letra maiÃºscula";
-  if (!/[a-z]/.test(texto)) return "Senha deve conter ao menos 1 letra minÃºscula";
-  if (!/[0-9]/.test(texto)) return "Senha deve conter ao menos 1 nÃºmero";
+  if (!/[A-Z]/.test(texto)) return "Senha deve conter ao menos 1 letra maiúscula";
+  if (!/[a-z]/.test(texto)) return "Senha deve conter ao menos 1 letra minúscula";
+  if (!/[0-9]/.test(texto)) return "Senha deve conter ao menos 1 número";
   if (!/[^A-Za-z0-9]/.test(texto)) return "Senha deve conter ao menos 1 caractere especial";
   return null;
 }
@@ -993,7 +989,7 @@ async function gerarCodigoAutomaticoAlmox() {
 async function validarCodigoDisponivelParaItem(codigoInformado, itemIdAtual = null) {
   const codigoFinal = normalizeText(codigoInformado);
   if (!codigoFinal) {
-    throw new Error("O cÃ³digo do item Ã© obrigatÃ³rio");
+    throw new Error("O código do item é obrigatório");
   }
 
   const existente = await getQuery(
@@ -1002,7 +998,7 @@ async function validarCodigoDisponivelParaItem(codigoInformado, itemIdAtual = nu
   );
 
   if (existente && Number(existente.id) !== Number(itemIdAtual)) {
-    throw new Error(`O cÃ³digo "${codigoFinal}" jÃ¡ existe.`);
+    throw new Error(`O código "${codigoFinal}" já existe.`);
   }
 
   return codigoFinal;
@@ -1052,7 +1048,7 @@ function deletarArquivoSeExistir(caminho) {
       fs.unlinkSync(caminho);
     }
   } catch (e) {
-    console.error("Erro ao remover arquivo temporÃ¡rio:", e.message);
+    console.error("Erro ao remover arquivo temporário:", e.message);
   }
 }
 
@@ -1237,7 +1233,7 @@ async function gerarPdfInventario(itens) {
   const fonteBold = fontesBold.find((fonte) => fs.existsSync(fonte)) || fonteRegular;
 
   if (!fonteRegular) {
-    throw new Error("Nenhuma fonte TTF compatÃ­vel foi encontrada para gerar o PDF.");
+    throw new Error("Nenhuma fonte TTF compatível foi encontrada para gerar o PDF.");
   }
 
   const doc = new PDFDocument({
@@ -1264,12 +1260,12 @@ async function gerarPdfInventario(itens) {
   const startY = 36;
   const tableX = margin;
   const colunas = [
-    { key: "codigo", label: "CÃ³digo", width: 74, align: "left" },
+    { key: "codigo", label: "Código", width: 74, align: "left" },
     { key: "ferramenta", label: "Ferramenta", width: 194, align: "left" },
     { key: "categoria", label: "Categoria", width: 112, align: "left" },
     { key: "marca_modelo", label: "Marca / Modelo", width: 128, align: "left" },
     { key: "quantidade_total", label: "Qtd.", width: 42, align: "right" },
-    { key: "localizacao", label: "LocalizaÃ§Ã£o", width: 136, align: "left" },
+    { key: "localizacao", label: "Localização", width: 136, align: "left" },
     { key: "estado_inicial", label: "Estado", width: 84, align: "left" }
   ];
   const tableWidth = colunas.reduce((sum, col) => sum + col.width, 0);
@@ -1283,16 +1279,16 @@ async function gerarPdfInventario(itens) {
     doc.rect(margin, startY + 68, pageWidth - margin * 2, 4).fill("#d90404");
 
     doc.fillColor("#ffffff").font("uniqstock-bold").fontSize(23)
-      .text("UniqStock | RelatÃ³rio de InventÃ¡rio", margin + 18, startY + 14, { lineBreak: false });
+      .text("UniqStock | Relatório de Inventário", margin + 18, startY + 14, { lineBreak: false });
 
     doc.fillColor("#dbe7f3").font("uniqstock-regular").fontSize(10)
       .text(`Gerado em ${dataGeracao}`, margin + 18, startY + 48, { lineBreak: false });
     doc.restore();
 
     const cards = [
-      { x: margin, title: "Itens no relatÃ³rio", value: String(itens.length) },
+      { x: margin, title: "Itens no relatório", value: String(itens.length) },
       { x: margin + 192, title: "Categorias", value: String(totalCategorias) },
-      { x: margin + 384, title: "PÃ¡gina", value: `${paginaAtual}/${totalPaginas}` }
+      { x: margin + 384, title: "Página", value: `${paginaAtual}/${totalPaginas}` }
     ];
 
     cards.forEach((card) => {
@@ -1368,8 +1364,8 @@ async function gerarPdfInventario(itens) {
   function drawFooter(paginaAtual, totalPaginas) {
     doc.save();
     doc.fillColor("#64748b").font("uniqstock-regular").fontSize(8)
-      .text("UniqStock | Software de GestÃ£o de Estoque", margin, footerY, { lineBreak: false });
-    doc.text(`PÃ¡gina ${paginaAtual} de ${totalPaginas}`, pageWidth - margin - 80, footerY, {
+      .text("UniqStock | Software de Gestão de Estoque", margin, footerY, { lineBreak: false });
+    doc.text(`Página ${paginaAtual} de ${totalPaginas}`, pageWidth - margin - 80, footerY, {
       width: 80,
       align: "right",
       lineBreak: false
@@ -1419,7 +1415,7 @@ function parseXmlRegistroFields(xmlTrecho) {
     const tag = normalizeXmlTagName(match[1]);
     const valorBruto = String(match[2] ?? "");
 
-    // Evita nÃ³s complexos aninhados para manter parser simples e previsÃ­vel.
+    // Evita nós complexos aninhados para manter parser simples e previsível.
     if (/<[a-zA-Z_][\w:.-]*\b[^>]*>/.test(valorBruto)) continue;
 
     resultado[tag] = decodeXmlEntities(valorBruto).trim();
@@ -1674,7 +1670,7 @@ app.get("/api/app/version", (req, res) => {
 
 async function obterReleaseAtualizacao(version = "") {
   if (!USE_SUPABASE_LICENSE || !supabase) {
-    return { ok: false, status: 503, error: "AtualizaÃ§Ã£o remota indisponÃ­vel (Supabase nÃ£o configurado)" };
+    return { ok: false, status: 503, error: "Atualização remota indisponível (Supabase não configurado)" };
   }
 
   let query = supabase
@@ -1704,7 +1700,7 @@ app.get("/api/app/update-check", async (req, res) => {
   try {
     const current = normalizeText(req.query.current || "");
     if (!current) {
-      return res.status(400).json({ error: "Informe a versÃ£o atual em ?current=" });
+      return res.status(400).json({ error: "Informe a versão atual em ?current=" });
     }
 
     const releaseResult = await obterReleaseAtualizacao();
@@ -1718,7 +1714,7 @@ app.get("/api/app/update-check", async (req, res) => {
         });
       }
       return res.status(releaseResult.status || 500).json({
-        error: releaseResult.error || "Erro ao consultar atualizaÃ§Ã£o",
+        error: releaseResult.error || "Erro ao consultar atualização",
         detalhe: releaseResult.detalhe
       });
     }
@@ -1790,7 +1786,7 @@ app.post("/api/licenca/ativar", async (req, res) => {
   try {
     const chave = normalizeText(req.body?.chave);
     if (!chave) {
-      return res.status(400).json({ error: "Informe a chave de ativaÃ§Ã£o" });
+      return res.status(400).json({ error: "Informe a chave de ativação" });
     }
 
     const resultado = USE_SUPABASE_LICENSE
@@ -1817,11 +1813,11 @@ app.post("/api/cadastro", requireAdmin, async (req, res) => {
     const senha = normalizeText(req.body.senha);
 
     if (!usuario || !senha) {
-      return res.status(400).json({ error: "UsuÃ¡rio e senha sÃ£o obrigatÃ³rios" });
+      return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
     }
 
     if (usuario.length < 3) {
-      return res.status(400).json({ error: "UsuÃ¡rio deve ter ao menos 3 caracteres" });
+      return res.status(400).json({ error: "Usuário deve ter ao menos 3 caracteres" });
     }
 
     const erroSenha = validarSenhaForte(senha);
@@ -1831,7 +1827,7 @@ app.post("/api/cadastro", requireAdmin, async (req, res) => {
 
     const existente = await getQuery(`SELECT id FROM usuarios WHERE usuario = ?`, [usuario]);
     if (existente) {
-      return res.status(400).json({ error: "UsuÃ¡rio jÃ¡ existe" });
+      return res.status(400).json({ error: "Usuário já existe" });
     }
 
     const hash = await bcrypt.hash(senha, 10);
@@ -1861,7 +1857,7 @@ app.post("/api/login", async (req, res) => {
   const statusLicenca = await obterStatusLicenca();
   if (!statusLicenca.ativa) {
     return res.status(403).json({
-      error: "LicenÃ§a nÃ£o ativada. Ative o sistema para continuar.",
+      error: "Licença não ativada. Ative o sistema para continuar.",
       codigo: "LICENCA_NAO_ATIVA",
       motivo: statusLicenca.motivo
     });
@@ -1871,7 +1867,7 @@ app.post("/api/login", async (req, res) => {
   const senha = normalizeText(req.body.senha);
 
   if (!usuario || !senha) {
-    return res.status(400).json({ error: "UsuÃ¡rio e senha sÃ£o obrigatÃ³rios" });
+    return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
   }
 
   try {
@@ -1886,7 +1882,7 @@ app.post("/api/login", async (req, res) => {
         motivo: "usuario_nao_encontrado",
         ip: req.ip
       }, usuario || "desconhecido");
-      return res.status(401).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
+      return res.status(401).json({ error: "Usuário não encontrado" });
     }
 
     const isHash = typeof user.senha === "string" && user.senha.startsWith("$2");
@@ -1918,10 +1914,10 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// SessÃ£o: usuÃ¡rio atual
+// Sessão: usuário atual
 app.get("/api/me", (req, res) => {
   if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "NÃ£o autenticado" });
+    return res.status(401).json({ error: "Não autenticado" });
   }
   res.json({ ok: true, user: req.session.user });
 });
@@ -1935,14 +1931,14 @@ app.post("/api/logout", (req, res) => {
 
 function requireAuth(req, res, next) {
   if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "NÃ£o autenticado" });
+    return res.status(401).json({ error: "Não autenticado" });
   }
   next();
 }
 
 function requireAdmin(req, res, next) {
   if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "NÃ£o autenticado" });
+    return res.status(401).json({ error: "Não autenticado" });
   }
   if (req.session.user.perfil !== "admin") {
     return res.status(403).json({ error: "Acesso negado" });
@@ -1955,7 +1951,7 @@ async function getUserPerms(usuario) {
   if (!user) return null;
   const perms = await getQuery(`SELECT * FROM permissoes_usuarios WHERE user_id = ?`, [user.id]);
   if (perms) return { user, perms };
-  // criar padrÃ£o conforme perfil
+  // criar padrão conforme perfil
   const isAdmin = user.perfil === "admin";
   await runQuery(
     `INSERT OR IGNORE INTO permissoes_usuarios (
@@ -1975,7 +1971,7 @@ async function getUserPerms(usuario) {
 app.get("/api/minhas-permissoes", requireAuth, async (req, res) => {
   try {
     const info = await getUserPerms(req.session.user.usuario);
-    if (!info) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
+    if (!info) return res.status(404).json({ error: "Usuário não encontrado" });
     res.json({
       ok: true,
       perfil: info.user.perfil,
@@ -1989,14 +1985,14 @@ app.get("/api/minhas-permissoes", requireAuth, async (req, res) => {
 function requirePerm(permissao) {
   return async function (req, res, next) {
     if (!req.session || !req.session.user) {
-      return res.status(401).json({ error: "NÃ£o autenticado" });
+      return res.status(401).json({ error: "Não autenticado" });
     }
     try {
       const info = await getUserPerms(req.session.user.usuario);
-      if (!info) return res.status(401).json({ error: "NÃ£o autenticado" });
+      if (!info) return res.status(401).json({ error: "Não autenticado" });
       if (info.user.perfil === "admin") return next();
       if (info.perms && info.perms[permissao] === 1) return next();
-      return res.status(403).json({ error: "PermissÃ£o negada" });
+      return res.status(403).json({ error: "Permissão negada" });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -2017,7 +2013,7 @@ async function registrarAuditoria(req, acao, entidade, entidadeId = null, detalh
   }
 }
 
-// Alterar senha (usuÃ¡rio logado)
+// Alterar senha (usuário logado)
 app.post("/api/alterar-senha", requireAuth, async (req, res) => {
   try {
     const usuarioSessao = req.session.user.usuario;
@@ -2028,7 +2024,7 @@ app.post("/api/alterar-senha", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Informe senha atual e nova" });
     }
     const user = await getQuery(`SELECT * FROM usuarios WHERE usuario = ?`, [usuarioSessao]);
-    if (!user) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
     const isHash = typeof user.senha === "string" && user.senha.startsWith("$2");
     const senhaOk = isHash ? await bcrypt.compare(atual, user.senha) : user.senha === atual;
     if (!senhaOk) return res.status(401).json({ error: "Senha atual incorreta" });
@@ -2042,7 +2038,7 @@ app.post("/api/alterar-senha", requireAuth, async (req, res) => {
   }
 });
 
-// Resetar senha (admin escolhe usuÃ¡rio)
+// Resetar senha (admin escolhe usuário)
 app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -2052,7 +2048,7 @@ app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
     const erroSenha = validarSenhaForte(nova);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
     const user = await getQuery(`SELECT * FROM usuarios WHERE id = ?`, [id]);
-    if (!user) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
     if (user.usuario === "admin") {
       return res.status(400).json({ error: "Use outro admin para alterar a senha do admin" });
     }
@@ -2063,7 +2059,7 @@ app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-// GestÃ£o de usuÃ¡rios (admin)
+// Gestão de usuários (admin)
 app.get("/api/usuarios", requireAdmin, async (req, res) => {
   try {
     const rows = await allQuery(`SELECT id, usuario, perfil FROM usuarios ORDER BY usuario`);
@@ -2080,14 +2076,14 @@ app.post("/api/usuarios", requireAdmin, async (req, res) => {
     const perfil = normalizeText(req.body.perfil || "operador");
 
     if (!usuario || !senha) {
-      return res.status(400).json({ error: "UsuÃ¡rio e senha sÃ£o obrigatÃ³rios" });
+      return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
     }
     const erroSenha = validarSenhaForte(senha);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
 
     const existente = await getQuery(`SELECT id FROM usuarios WHERE usuario = ?`, [usuario]);
     if (existente) {
-      return res.status(400).json({ error: "UsuÃ¡rio jÃ¡ existe" });
+      return res.status(400).json({ error: "Usuário já existe" });
     }
 
     const hash = await bcrypt.hash(senha, 10);
@@ -2121,9 +2117,9 @@ app.delete("/api/usuarios/:id", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const user = await getQuery(`SELECT * FROM usuarios WHERE id = ?`, [id]);
-    if (!user) return res.status(404).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
     if (user.usuario === "admin") {
-      return res.status(400).json({ error: "NÃ£o Ã© permitido remover o usuÃ¡rio admin" });
+      return res.status(400).json({ error: "Não é permitido remover o usuário admin" });
     }
     await runQuery(`DELETE FROM usuarios WHERE id = ?`, [id]);
     res.json({ ok: true });
@@ -2132,12 +2128,12 @@ app.delete("/api/usuarios/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// PermissÃµes: obter e atualizar
+// Permissões: obter e atualizar
 app.get("/api/usuarios/:id/permissoes", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const perms = await getQuery(`SELECT * FROM permissoes_usuarios WHERE user_id = ?`, [id]);
-    if (!perms) return res.status(404).json({ error: "PermissÃµes nÃ£o encontradas" });
+    if (!perms) return res.status(404).json({ error: "Permissões não encontradas" });
     res.json(perms);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2158,7 +2154,7 @@ app.put("/api/usuarios/:id/permissoes", requireAdmin, async (req, res) => {
       }
     }
     if (Object.keys(valores).length === 0) {
-      return res.status(400).json({ error: "Nenhuma permissÃ£o enviada" });
+      return res.status(400).json({ error: "Nenhuma permissão enviada" });
     }
     const setClause = Object.keys(valores).map(k => `${k} = ?`).join(", ");
     const params = [...Object.values(valores), id];
@@ -2328,7 +2324,7 @@ app.get("/api/localizacoes", requireAuth, async (req, res) => {
       customizadas: localizacoesCustomizadas
     });
   } catch (error) {
-    return res.status(500).json({ error: "Erro ao carregar localizaÃ§Ãµes" });
+    return res.status(500).json({ error: "Erro ao carregar localizações" });
   }
 });
 
@@ -2356,7 +2352,7 @@ app.get("/api/configuracoes/localizacoes", requireAdmin, async (req, res) => {
       customizadas: localizacoesCustomizadas
     });
   } catch (error) {
-    return res.status(500).json({ error: "Erro ao carregar localizaÃ§Ãµes" });
+    return res.status(500).json({ error: "Erro ao carregar localizações" });
   }
 });
 
@@ -2402,7 +2398,7 @@ app.put("/api/configuracoes/localizacoes", requireAdmin, async (req, res) => {
       customizadas: localizacoesCustomizadas
     });
   } catch (error) {
-    return res.status(500).json({ error: "Erro ao salvar localizaÃ§Ãµes" });
+    return res.status(500).json({ error: "Erro ao salvar localizações" });
   }
 });
 
@@ -2425,12 +2421,12 @@ app.put("/api/configuracoes/backup", requireAdmin, async (req, res) => {
     const reterDias = Math.max(1, Number(req.body?.backup_reter_dias) || 15);
 
     if (!/^\d{2}:\d{2}$/.test(horario)) {
-      return res.status(400).json({ error: "HorÃ¡rio invÃ¡lido. Use HH:MM." });
+      return res.status(400).json({ error: "Horário inválido. Use HH:MM." });
     }
 
     const [hh, mm] = horario.split(":").map((v) => Number(v));
     if (hh < 0 || hh > 23 || mm < 0 || mm > 59) {
-      return res.status(400).json({ error: "HorÃ¡rio invÃ¡lido." });
+      return res.status(400).json({ error: "Horário inválido." });
     }
 
     await definirConfigValor("backup_auto_habilitado", String(habilitado));
@@ -2519,7 +2515,7 @@ app.post("/api/itens", requirePerm("criar_itens"), async (req, res) => {
     const nomeFerramenta = normalizeText(ferramenta);
 
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta Ã© obrigatÃ³rio" });
+      return res.status(400).json({ error: "O campo ferramenta é obrigatório" });
     }
 
     const codigoFinal = await gerarCodigoAutomatico();
@@ -2555,7 +2551,7 @@ app.post("/api/itens", requirePerm("criar_itens"), async (req, res) => {
     res.json({ ok: true, codigo: codigoFinal });
   } catch (e) {
     if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
+      return res.status(400).json({ error: "Já existe um item com esse código." });
     }
 
     res.status(500).json({ error: e.message });
@@ -2578,7 +2574,7 @@ app.post("/api/items", requirePerm("criar_itens"), async (req, res) => {
     const nomeFerramenta = normalizeText(ferramenta || nome);
 
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta/nome Ã© obrigatÃ³rio" });
+      return res.status(400).json({ error: "O campo ferramenta/nome é obrigatório" });
     }
 
     const codigoFinal = await gerarCodigoAutomatico();
@@ -2614,7 +2610,7 @@ app.post("/api/items", requirePerm("criar_itens"), async (req, res) => {
     res.json({ ok: true, codigo: codigoFinal });
   } catch (e) {
     if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
+      return res.status(400).json({ error: "Já existe um item com esse código." });
     }
 
     res.status(500).json({ error: e.message });
@@ -2627,7 +2623,7 @@ app.put("/api/itens/:id", requirePerm("editar_itens"), async (req, res) => {
     const itemAtual = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
 
     if (!itemAtual) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const {
@@ -2643,7 +2639,7 @@ app.put("/api/itens/:id", requirePerm("editar_itens"), async (req, res) => {
 
     const nomeFerramenta = normalizeText(ferramenta);
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta Ã© obrigatÃ³rio" });
+      return res.status(400).json({ error: "O campo ferramenta é obrigatório" });
     }
 
     const codigoFinal = await validarCodigoDisponivelParaItem(codigo || itemAtual.codigo, id);
@@ -2674,7 +2670,7 @@ app.put("/api/itens/:id", requirePerm("editar_itens"), async (req, res) => {
     return res.json({ ok: true });
   } catch (e) {
     if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
+      return res.status(400).json({ error: "Já existe um item com esse código." });
     }
     return res.status(500).json({ error: e.message });
   }
@@ -2686,7 +2682,7 @@ app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
     const itemAtual = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
 
     if (!itemAtual) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const {
@@ -2703,7 +2699,7 @@ app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
 
     const nomeFerramenta = normalizeText(ferramenta || nome);
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta/nome Ã© obrigatÃ³rio" });
+      return res.status(400).json({ error: "O campo ferramenta/nome é obrigatório" });
     }
 
     const codigoFinal = await validarCodigoDisponivelParaItem(codigo || itemAtual.codigo, id);
@@ -2734,7 +2730,7 @@ app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
     return res.json({ ok: true });
   } catch (e) {
     if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "JÃ¡ existe um item com esse cÃ³digo." });
+      return res.status(400).json({ error: "Já existe um item com esse código." });
     }
     return res.status(500).json({ error: e.message });
   }
@@ -2746,7 +2742,7 @@ app.delete("/api/itens/:id", requirePerm("excluir_itens"), async (req, res) => {
     const itemAtual = await getQuery(`SELECT id, codigo, ferramenta FROM itens WHERE id = ?`, [id]);
 
     if (!itemAtual) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const movimentacoes = await getQuery(
@@ -2756,7 +2752,7 @@ app.delete("/api/itens/:id", requirePerm("excluir_itens"), async (req, res) => {
 
     if (Number(movimentacoes?.total || 0) > 0) {
       return res.status(400).json({
-        error: "NÃ£o Ã© possÃ­vel excluir itens com histÃ³rico de movimentaÃ§Ãµes."
+        error: "Não é possível excluir itens com histórico de movimentações."
       });
     }
 
@@ -2779,7 +2775,7 @@ app.delete("/api/items/:id", requirePerm("excluir_itens"), async (req, res) => {
     const itemAtual = await getQuery(`SELECT id, codigo, ferramenta FROM itens WHERE id = ?`, [id]);
 
     if (!itemAtual) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const movimentacoes = await getQuery(
@@ -2789,7 +2785,7 @@ app.delete("/api/items/:id", requirePerm("excluir_itens"), async (req, res) => {
 
     if (Number(movimentacoes?.total || 0) > 0) {
       return res.status(400).json({
-        error: "NÃ£o Ã© possÃ­vel excluir itens com histÃ³rico de movimentaÃ§Ãµes."
+        error: "Não é possível excluir itens com histórico de movimentações."
       });
     }
 
@@ -2807,7 +2803,7 @@ app.delete("/api/items/:id", requirePerm("excluir_itens"), async (req, res) => {
 });
 
 // =========================
-// API: MOVIMENTAÃ‡Ã•ES
+// API: MOVIMENTAÇÕES
 // =========================
 app.get("/api/almoxarifado/itens", requireAuth, async (req, res) => {
   try {
@@ -3000,7 +2996,7 @@ app.post("/api/movimentacoes", requirePerm("registrar_movimentacao"), async (req
 
   if (!item_id || !tipo || quantidade === undefined || quantidade === null) {
     return res.status(400).json({
-      error: "item_id, tipo e quantidade sÃ£o obrigatÃ³rios"
+      error: "item_id, tipo e quantidade são obrigatórios"
     });
   }
 
@@ -3014,7 +3010,7 @@ app.post("/api/movimentacoes", requirePerm("registrar_movimentacao"), async (req
 
   if (!["ENTRADA", "SAIDA"].includes(tipo)) {
     return res.status(400).json({
-      error: "Tipo invÃ¡lido. Use ENTRADA ou SAIDA"
+      error: "Tipo inválido. Use ENTRADA ou SAIDA"
     });
   }
 
@@ -3022,14 +3018,14 @@ app.post("/api/movimentacoes", requirePerm("registrar_movimentacao"), async (req
     const itemExiste = await getQuery(`SELECT id FROM itens WHERE id = ?`, [item_id]);
 
     if (!itemExiste) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const estoqueAtual = await obterEstoqueAtual(item_id);
 
     if (tipo === "SAIDA" && estoqueAtual - qtd < 0) {
       return res.status(400).json({
-        error: `SaÃ­da invÃ¡lida. Estoque atual: ${estoqueAtual}`
+        error: `Saída inválida. Estoque atual: ${estoqueAtual}`
       });
     }
 
@@ -3069,7 +3065,7 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
 
   if (!item_id || !tipo || quantidade === undefined || quantidade === null) {
     return res.status(400).json({
-      error: "item_id, tipo e quantidade sÃ£o obrigatÃ³rios"
+      error: "item_id, tipo e quantidade são obrigatórios"
     });
   }
 
@@ -3083,7 +3079,7 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
 
   if (!["ENTRADA", "SAIDA"].includes(tipo)) {
     return res.status(400).json({
-      error: "Tipo invÃ¡lido. Use ENTRADA ou SAIDA"
+      error: "Tipo inválido. Use ENTRADA ou SAIDA"
     });
   }
 
@@ -3091,14 +3087,14 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
     const itemExiste = await getQuery(`SELECT id FROM itens WHERE id = ?`, [item_id]);
 
     if (!itemExiste) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const estoqueAtual = await obterEstoqueAtual(item_id);
 
     if (tipo === "SAIDA" && estoqueAtual - qtd < 0) {
       return res.status(400).json({
-        error: `SaÃ­da invÃ¡lida. Estoque atual: ${estoqueAtual}`
+        error: `Saída inválida. Estoque atual: ${estoqueAtual}`
       });
     }
 
@@ -3143,7 +3139,7 @@ app.get("/api/qrcode/:id", requirePerm("ver_etiquetas"), async (req, res) => {
     const item = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
 
     if (!item) {
-      return res.status(404).json({ error: "Item nÃ£o encontrado" });
+      return res.status(404).json({ error: "Item não encontrado" });
     }
 
     const conteudoQR = `UNIQ-${item.codigo || item.id}`;
@@ -3173,7 +3169,7 @@ app.get("/api/item-qr/:codigo", requirePerm("usar_scanner"), async (req, res) =>
     );
 
     if (!item) {
-      return res.status(404).json({ error: "Ferramenta nÃ£o encontrada" });
+      return res.status(404).json({ error: "Ferramenta não encontrada" });
     }
 
     res.json(item);
@@ -3267,13 +3263,13 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
       if (!linhas.length) {
         deletarArquivoSeExistir(req.file.path);
         return res.status(400).json({
-          error: "XML sem registros vÃ¡lidos para importaÃ§Ã£o."
+          error: "XML sem registros válidos para importação."
         });
       }
     } else {
       deletarArquivoSeExistir(req.file.path);
       return res.status(400).json({
-        error: "Formato nÃ£o suportado. Use CSV, XLSX, XLS ou XML."
+        error: "Formato não suportado. Use CSV, XLSX, XLS ou XML."
       });
     }
 
@@ -3292,7 +3288,7 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
 
     if (relatorio.total_importado === 0 && relatorio.total_erros > 0) {
       return res.status(400).json({
-        error: "Nenhuma linha foi importada. Verifique o relatÃ³rio de erros.",
+        error: "Nenhuma linha foi importada. Verifique o relatório de erros.",
         relatorio
       });
     }
@@ -3308,7 +3304,7 @@ app.post("/api/importar-csv", requirePerm("importar_exportar"), upload.single("a
 });
 
 // =========================
-// CORRIGIR CÃ“DIGOS ANTIGOS
+// CORRIGIR CÓDIGOS ANTIGOS
 // =========================
 app.post("/api/corrigir-codigos-antigos", requireAdmin, async (req, res) => {
   try {
@@ -3359,7 +3355,7 @@ app.get("/api/debug-itens", requireAdmin, async (req, res) => {
 });
 
 // =========================
-// REORGANIZAR CÃ“DIGOS
+// REORGANIZAR CÓDIGOS
 // =========================
 app.get("/api/reorganizar-codigos-fer", requireAdmin, async (req, res) => {
   try {
@@ -3411,7 +3407,7 @@ app.get("/api/reorganizar-codigos-fer", requireAdmin, async (req, res) => {
 });
 
 // =========================
-// SINCRONIZAR SEQUÃŠNCIA
+// SINCRONIZAR SEQUÊNCIA
 // =========================
 app.get("/api/sincronizar-sequencia-codigos", requireAdmin, async (req, res) => {
   try {
@@ -3449,7 +3445,7 @@ app.get("/api/sincronizar-sequencia-codigos", requireAdmin, async (req, res) => 
 });
 
 // =========================
-// EXPORTAR INVENTÃRIO PARA PDF
+// EXPORTAR INVENTÁRIO PARA PDF
 // =========================
 app.get("/api/exportar-almoxarifado", requirePerm("importar_exportar"), async (req, res) => {
   try {
@@ -3518,7 +3514,7 @@ app.listen(PORT, () => {
 });
 
 // =========================
-// BACKUP AUTOMÃTICO DIÃRIO
+// BACKUP AUTOMÁTICO DIÁRIO
 // =========================
 let ultimoBackupAutomaticoData = "";
 setInterval(async () => {

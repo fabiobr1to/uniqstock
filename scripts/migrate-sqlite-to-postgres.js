@@ -57,9 +57,11 @@ async function resetPostgresSequences(targetDb) {
   const tables = [
     "usuarios",
     "itens",
+    "almoxarifado_itens",
     "obras",
     "funcionarios",
     "movimentacoes",
+    "almoxarifado_movimentacoes",
     "auditoria_acoes"
   ];
 
@@ -97,10 +99,12 @@ async function main() {
       await pgRun(targetDb, `
         TRUNCATE TABLE
           movimentacoes,
+          almoxarifado_movimentacoes,
           auditoria_acoes,
           permissoes_usuarios,
           funcionarios,
           obras,
+          almoxarifado_itens,
           itens,
           usuarios,
           configuracoes
@@ -109,6 +113,21 @@ async function main() {
 
       await copyTableRows(sourceDb, targetDb, "usuarios", ["id", "usuario", "senha", "perfil"]);
       await copyTableRows(sourceDb, targetDb, "itens", ["id", "codigo", "ferramenta", "categoria", "marca_modelo", "quantidade_total", "localizacao", "estado_inicial", "observacao"]);
+      await copyTableRows(sourceDb, targetDb, "almoxarifado_itens", [
+        "id",
+        "codigo",
+        "ferramenta",
+        "categoria",
+        "marca_modelo",
+        "quantidade_total",
+        "unidade_medida",
+        "embalagem",
+        "estoque_minimo",
+        "fornecedor",
+        "localizacao",
+        "estado_inicial",
+        "observacao"
+      ]);
       await copyTableRows(sourceDb, targetDb, "configuracoes", ["chave", "valor"]);
       await copyTableRows(sourceDb, targetDb, "obras", ["id", "nome", "responsavel"]);
       await copyTableRows(sourceDb, targetDb, "funcionarios", ["id", "nome", "matricula", "funcao"]);
@@ -129,6 +148,16 @@ async function main() {
       ]);
       await copyTableRows(sourceDb, targetDb, "auditoria_acoes", ["id", "data", "usuario", "acao", "entidade", "entidade_id", "detalhes"]);
       await copyTableRows(sourceDb, targetDb, "movimentacoes", ["id", "data", "item_id", "tipo", "quantidade", "obra", "funcionario", "observacao"]);
+      await copyTableRows(sourceDb, targetDb, "almoxarifado_movimentacoes", [
+        "id",
+        "data",
+        "item_id",
+        "tipo",
+        "quantidade",
+        "obra",
+        "funcionario",
+        "observacao"
+      ]);
 
       await resetPostgresSequences(targetDb);
     });
