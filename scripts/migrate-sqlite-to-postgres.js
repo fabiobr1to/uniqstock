@@ -14,6 +14,15 @@ function sqliteAll(db, sql, params = []) {
   });
 }
 
+function sqliteGet(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (error, row) => {
+      if (error) return reject(error);
+      resolve(row || null);
+    });
+  });
+}
+
 function sqliteClose(db) {
   return new Promise((resolve, reject) => {
     db.close((error) => {
@@ -32,10 +41,38 @@ async function pgRun(db, sql, params = []) {
   });
 }
 
+async function sqliteTableExists(db, tableName) {
+  const row = await sqliteGet(
+    db,
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    [tableName]
+  );
+  return Boolean(row?.name);
+}
+
+async function sqliteTableColumns(db, tableName) {
+  const rows = await sqliteAll(db, `PRAGMA table_info(${tableName})`);
+  return new Set((rows || []).map((row) => row.name));
+}
+
 async function copyTableRows(sourceDb, targetDb, tableName, columns) {
+  const tableExists = await sqliteTableExists(sourceDb, tableName);
+  if (!tableExists) {
+    console.log(`Tabela ${tableName}: ausente na origem, pulando.`);
+    return;
+  }
+
+  const sourceColumns = await sqliteTableColumns(sourceDb, tableName);
+  const availableColumns = columns.filter((column) => sourceColumns.has(column));
+
+  if (!availableColumns.length) {
+    console.log(`Tabela ${tableName}: sem colunas compatíveis na origem, pulando.`);
+    return;
+  }
+
   const rows = await sqliteAll(
     sourceDb,
-    `SELECT ${columns.join(", ")} FROM ${tableName} ORDER BY ${columns.includes("id") ? "id" : columns[0]}`
+    `SELECT ${availableColumns.join(", ")} FROM ${tableName} ORDER BY ${availableColumns.includes("id") ? "id" : availableColumns[0]}`
   );
 
   if (!rows.length) {
@@ -43,11 +80,19 @@ async function copyTableRows(sourceDb, targetDb, tableName, columns) {
     return;
   }
 
-  const placeholders = columns.map(() => "?").join(", ");
-  const sql = `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${placeholders})`;
+  const placeholders = availableColumns.map(() => "?").join(", ");
+  const sql = `INSERT INTO ${tableName} (${availableColumns.join(", ")}) VALUES (${placeholders})`;
 
   for (const row of rows) {
-    await pgRun(targetDb, sql, columns.map((column) => row[column]));
+    await pgRun(targetDb, sql, availableColumns.map((column) => row[column]));
+  }
+
+  const missingColumns = columns.filter((column) => !sourceColumns.has(column));
+  if (missingColumns.length) {
+    console.log(
+      `Tabela ${tableName}: ${rows.length} registro(s) migrado(s) com defaults para coluna(s) ausente(s): ${missingColumns.join(", ")}`
+    );
+    return;
   }
 
   console.log(`Tabela ${tableName}: ${rows.length} registro(s) migrado(s)`);

@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const crypto = require("crypto");
+const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 const bcrypt = require("bcryptjs");
@@ -18,6 +20,14 @@ const TEMP_ADMIN = `smoke_pg_admin_${TEST_SUFFIX}`;
 const TEMP_ADMIN_PASSWORD = "SmokePg!123";
 const TEMP_OPERATOR = `smoke_pg_oper_${TEST_SUFFIX}`;
 const TEMP_OPERATOR_PASSWORD = "Operador!123";
+const LICENSE_SECRET = process.env.UNIQSTOCK_LICENSE_SECRET || "uniqstock-license-secret-change";
+const LICENSE_KEYS = [
+  "licenca_ativa",
+  "licenca_chave",
+  "licenca_cliente",
+  "licenca_expira_em",
+  "licenca_ativada_em"
+];
 
 function runDb(db, sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -35,6 +45,45 @@ function getCookiesFromResponse(response) {
 
   const single = response.headers.get("set-cookie");
   return single ? [single] : [];
+}
+
+function toBase64Url(input) {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function assinarLicenca(payloadB64) {
+  return toBase64Url(
+    crypto.createHmac("sha256", LICENSE_SECRET).update(payloadB64).digest()
+  );
+}
+
+function gerarCodigoMaquina() {
+  const bruto = [
+    os.hostname() || "",
+    os.platform() || "",
+    os.arch() || "",
+    process.env.COMPUTERNAME || ""
+  ].join("|");
+
+  const hash = crypto.createHash("sha256").update(bruto).digest("hex");
+  return `MCH-${hash.slice(0, 16).toUpperCase()}`;
+}
+
+function gerarChaveLicenca(cliente, expiraEm, codigoMaquina = "") {
+  const payload = {
+    v: 1,
+    cliente: String(cliente || "").trim(),
+    exp: String(expiraEm || "").trim(),
+    iat: new Date().toISOString(),
+    mch: String(codigoMaquina || "").trim().toUpperCase() || undefined
+  };
+  const payloadB64 = toBase64Url(JSON.stringify(payload));
+  const assinatura = assinarLicenca(payloadB64);
+  return `USK1.${payloadB64}.${assinatura}`;
 }
 
 async function requestJson(url, options = {}) {
@@ -91,6 +140,62 @@ async function createTempAdmin(db) {
     hash,
     "admin"
   ]);
+}
+
+async function getConfigRow(db, key) {
+  return new Promise((resolve, reject) => {
+    db.get(`SELECT chave, valor FROM configuracoes WHERE chave = ?`, [key], (error, row) => {
+      if (error) return reject(error);
+      resolve(row || null);
+    });
+  });
+}
+
+async function setConfigValue(db, key, value) {
+  await runDb(
+    db,
+    `INSERT INTO configuracoes (chave, valor) VALUES (?, ?)
+     ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`,
+    [key, value]
+  );
+}
+
+async function snapshotLicenseConfig(db) {
+  const snapshot = {};
+
+  for (const key of LICENSE_KEYS) {
+    snapshot[key] = await getConfigRow(db, key);
+  }
+
+  return snapshot;
+}
+
+async function applyTemporaryLicense(db, state) {
+  state.licenseSnapshot = await snapshotLicenseConfig(db);
+
+  const expiraEm = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+  const cliente = `Smoke Postgres ${TEST_SUFFIX}`;
+  const chave = gerarChaveLicenca(cliente, expiraEm, gerarCodigoMaquina());
+
+  await setConfigValue(db, "licenca_ativa", "1");
+  await setConfigValue(db, "licenca_chave", chave);
+  await setConfigValue(db, "licenca_cliente", cliente);
+  await setConfigValue(db, "licenca_expira_em", expiraEm);
+  await setConfigValue(db, "licenca_ativada_em", new Date().toISOString());
+}
+
+async function restoreLicenseConfig(db, snapshot) {
+  if (!snapshot) return;
+
+  for (const key of LICENSE_KEYS) {
+    const row = snapshot[key];
+    if (row) {
+      await setConfigValue(db, key, row.valor);
+      continue;
+    }
+
+    await runDb(db, `DELETE FROM configuracoes WHERE chave = ?`, [key]);
+  }
 }
 
 async function cleanupArtifacts(db, state) {
@@ -165,6 +270,7 @@ async function main() {
     await initDatabaseSchema(db);
     await cleanupArtifacts(db, state);
     await createTempAdmin(db);
+    await applyTemporaryLicense(db, state);
 
     if (SHOULD_SPAWN_SERVER) {
       serverProcess = spawn(process.execPath, ["server.js"], {
@@ -433,6 +539,9 @@ async function main() {
 
     await cleanupArtifacts(db, state).catch((error) => {
       console.error("[smoke-postgres] Falha na limpeza:", error.message);
+    });
+    await restoreLicenseConfig(db, state.licenseSnapshot).catch((error) => {
+      console.error("[smoke-postgres] Falha ao restaurar licença:", error.message);
     });
     await new Promise((resolve) => db.close(() => resolve()));
   }
