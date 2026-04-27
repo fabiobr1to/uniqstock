@@ -12,20 +12,19 @@
 <body>
   <div class="app-layout">
     <aside class="sidebar">
-      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
-        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+      <div class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo">
         <p>Sistema de Inventário</p>
-      </a>
+      </div>
 
       <nav class="sidebar-nav">
-        <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Ferramentaria</span></a>
+        <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Balcão da Ferramentaria</span></a>
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
-        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário</span></a>
-        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário da Ferramentaria</span></a>
         <a href="cadastro-ferramenta.html" class="ativo"><span class="sidebar-icon">🛠️</span><span class="sidebar-link-label">Cadastrar Ferramenta</span></a>
         <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
         <a href="scanner.html"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
-        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Movimentações</span></a>
+        <a href="movimentacoes-ferramentaria.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Histórico da Ferramentaria</span></a>
         <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
         <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
         <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
@@ -43,15 +42,15 @@
         <div class="inventory-header-copy">
           <span class="inventory-kicker">Cadastro e carga</span>
           <h2>Cadastrar Ferramenta</h2>
-          <p>Cadastro manual e importação de itens para o inventário.</p>
+          <p>Cadastro manual e importação de ferramentas e equipamentos da Ferramentaria.</p>
         </div>
       </header>
 
       <div class="container tool-grid">
         <section class="painel-form tool-panel">
-          <h2>Novo item</h2>
-          <p class="tool-panel-copy">Preencha os dados principais do item. O código é gerado automaticamente pelo sistema.</p>
-          <form id="formItem" autocomplete="off" class="tool-form">
+          <h2>Nova ferramenta</h2>
+          <p class="tool-panel-copy">Preencha os dados principais da ferramenta. O código é gerado automaticamente pelo sistema.</p>
+          <form id="formItem" autocomplete="off" class="tool-form" enctype="multipart/form-data">
             <div class="form-group">
               <label>Código</label>
               <input type="text" value="Gerado automaticamente no padrão PRZ-0001" disabled>
@@ -84,23 +83,35 @@
               <label for="observacao">Observação</label>
               <textarea id="observacao" name="observacao" rows="4" autocomplete="off"></textarea>
             </div>
+            <div class="form-group">
+              <label for="foto_ferramenta">Foto da ferramenta</label>
+              <input id="foto_ferramenta" name="foto_ferramenta" type="file" accept="image/*">
+            </div>
+            <div class="form-group">
+              <label for="nota_fiscal_ferramenta">Nota fiscal</label>
+              <input id="nota_fiscal_ferramenta" name="nota_fiscal_ferramenta" type="file" accept=".pdf,.xml,image/*">
+            </div>
             <div class="tool-actions">
-              <button type="submit" class="btn-primary tool-primary-btn">Salvar item</button>
-              <a href="index.html" class="btn-secondary tool-secondary-link">Ver inventário</a>
+              <button type="submit" class="btn-primary tool-primary-btn">Salvar ferramenta</button>
             </div>
           </form>
           <p id="mensagemCadastro" class="tool-status"></p>
         </section>
 
-        <section class="painel-form tool-panel tool-panel-secondary">
+        <section class="painel-form tool-panel tool-panel-secondary tool-panel-import">
           <h2>Importação</h2>
-          <p class="tool-panel-copy">Envie CSV, XLSX, XLS ou XML. O sistema detecta automaticamente o encoding mais provável.</p>
-          <form id="formImportacao" class="tool-form-compact">
-            <div class="form-group">
-              <label for="arquivoImportacao">Arquivo</label>
-              <input id="arquivoImportacao" name="arquivo" type="file" accept=".csv,.xlsx,.xls,.xml" required>
+          <p class="tool-panel-copy">Envie CSV, XLSX, XLS ou XML para a Ferramentaria. O sistema detecta automaticamente o encoding mais provável.</p>
+          <form id="formImportacao" class="tool-form-compact" method="post" enctype="multipart/form-data" novalidate>
+            <div class="form-group tool-upload-box">
+              <label for="arquivoImportacao">Arquivo do inventário</label>
+              <p class="tool-upload-copy">Clique no botão abaixo para escolher o arquivo CSV, XLSX, XLS ou XML da Ferramentaria.</p>
+              <div class="tool-upload-row">
+                <label for="arquivoImportacao" class="tool-upload-trigger">Escolher arquivo</label>
+                <button id="btnImportarArquivo" type="submit" class="btn-primary tool-primary-btn tool-upload-submit">Importar arquivo</button>
+                <span id="arquivoImportacaoNome" class="tool-upload-filename">Nenhum arquivo selecionado</span>
+              </div>
+              <input id="arquivoImportacao" name="arquivo" class="tool-upload-input" type="file" accept=".csv,.xlsx,.xls,.xml" required>
             </div>
-            <button type="submit" class="btn-primary tool-primary-btn">Importar arquivo</button>
           </form>
           <div id="resultadoImportacao" class="tool-status"></div>
         </section>
@@ -126,12 +137,24 @@
     ];
     const DEFAULT_LOCATION_OPTIONS = [
       "Ferramentaria",
-      "Almoxarifado",
       "Sala PRZ",
       "Veículo",
       "Obra",
       "Estoque externo"
     ];
+
+    function ehLocalizacaoAlmoxarifado(valor) {
+      return String(valor || "").trim().toLowerCase() === "almoxarifado";
+    }
+
+    function filtrarLocalizacoesFerramentaria(lista) {
+      return lista.filter((item) => !ehLocalizacaoAlmoxarifado(item));
+    }
+
+    function normalizarLocalizacaoFerramentaria(valor) {
+      const localizacao = String(valor || "").trim();
+      return ehLocalizacaoAlmoxarifado(localizacao) ? "Ferramentaria" : localizacao;
+    }
 
     async function getJson(url, options = {}) {
       const res = await fetch(url, { credentials: "same-origin", ...options });
@@ -227,13 +250,13 @@
       const locais = lerLocalizacoesLocais();
       try {
         const dados = await getJson("/api/localizacoes", { cache: "no-store" });
-        return combinarCategorias(
+        return filtrarLocalizacoesFerramentaria(combinarCategorias(
           Array.isArray(dados.localizacoes) ? dados.localizacoes : [],
           DEFAULT_LOCATION_OPTIONS,
           locais
-        );
+        ));
       } catch (_) {
-        return combinarCategorias(DEFAULT_LOCATION_OPTIONS, locais);
+        return filtrarLocalizacoesFerramentaria(combinarCategorias(DEFAULT_LOCATION_OPTIONS, locais));
       }
     }
 
@@ -242,10 +265,23 @@
       preencherCategorias("categoria", categorias);
       const localizacoes = await carregarLocalizacoes();
       preencherCategorias("localizacao", localizacoes, "Selecione uma localização");
+      const selectLocalizacao = document.getElementById("localizacao");
+      if (selectLocalizacao && !selectLocalizacao.value) {
+        selectLocalizacao.value = "Ferramentaria";
+      }
     }
 
     async function iniciarTela() {
       await atualizarCategoriasNaTela();
+      atualizarNomeArquivoImportacao();
+    }
+
+    function atualizarNomeArquivoImportacao() {
+      const input = document.getElementById("arquivoImportacao");
+      const nome = document.getElementById("arquivoImportacaoNome");
+      if (!nome) return;
+      const arquivo = input?.files?.[0];
+      nome.textContent = arquivo ? arquivo.name : "Nenhum arquivo selecionado";
     }
 
     document.getElementById("formItem").addEventListener("submit", async (e) => {
@@ -254,14 +290,34 @@
       msg.textContent = "Salvando item...";
 
       try {
-        const body = Object.fromEntries(new FormData(e.target).entries());
+        const body = new FormData(e.target);
+        body.set("localizacao", normalizarLocalizacaoFerramentaria(body.get("localizacao") || "Ferramentaria"));
         const data = await getJson("/api/itens", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
+          body
         });
         e.target.reset();
         document.getElementById("quantidade_total").value = "0";
+        document.getElementById("localizacao").value = "Ferramentaria";
+        const links = [];
+        if (data.foto?.public_url) {
+          links.push(`<a href="${data.foto.public_url}" target="_blank" rel="noopener">Abrir foto</a>`);
+        }
+        if (data.nota_fiscal?.public_url) {
+          links.push(`<a href="${data.nota_fiscal.public_url}" target="_blank" rel="noopener">Abrir nota fiscal</a>`);
+        }
+        if (links.length > 0) {
+          msg.innerHTML = `Item salvo com sucesso. Codigo gerado: ${data.codigo || "-"}. ${links.join(" - ")}`;
+        } else {
+          msg.textContent = `Item salvo com sucesso. Codigo gerado: ${data.codigo || "-"}`;
+        }
+        return;
+        if (data.foto?.public_url) {
+          msg.innerHTML = `Item salvo com sucesso. Codigo gerado: ${data.codigo || "-"} - Foto vinculada com sucesso. <a href="${data.foto.public_url}" target="_blank" rel="noopener">Abrir foto</a>`;
+          return;
+          msg.innerHTML = `Item salvo com sucesso. CÃ³digo gerado: ${data.codigo || "-"} · Foto vinculada com sucesso. <a href="${data.foto.public_url}" target="_blank" rel="noopener">Abrir foto</a>`;
+          return;
+        }
         msg.textContent = `Item salvo com sucesso. Código gerado: ${data.codigo || "-"}`;
       } catch (err) {
         if (!redirecionarErro(err)) {
@@ -272,11 +328,24 @@
 
     document.getElementById("formImportacao").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const formEl = e.currentTarget;
       const host = document.getElementById("resultadoImportacao");
+      const btn = document.getElementById("btnImportarArquivo");
+      const arquivoInput = document.getElementById("arquivoImportacao");
+      const arquivoSelecionado = arquivoInput?.files?.[0];
+      if (!arquivoSelecionado) {
+        host.textContent = "Selecione um arquivo para importar.";
+        arquivoInput?.focus();
+        return;
+      }
       host.textContent = "Importando arquivo...";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Importando...";
+      }
 
       try {
-        const form = new FormData(e.target);
+        const form = new FormData(formEl);
         const data = await getJson("/api/importar-csv", {
           method: "POST",
           body: form
@@ -284,22 +353,30 @@
         host.innerHTML = `
           <strong>Importação concluída.</strong><br>
           Encoding detectado: ${data.encoding_detectado || "n/d"}<br>
-          Recebido: ${data.total_recebido || 0} | Importado: ${data.total_importado || 0} | Ignorado: ${data.total_ignorado || 0} | Erros: ${data.total_erros || 0}
+          Linhas recebidas: ${data.total_recebido || 0} | Importadas: ${data.total_importado || 0} | Ignoradas: ${data.total_ignorado || 0} | Com erro: ${data.total_erros || 0}
         `;
-        e.target.reset();
+        formEl.reset();
+        atualizarNomeArquivoImportacao();
+        await atualizarCategoriasNaTela();
       } catch (err) {
         if (!redirecionarErro(err)) {
           const detalhes = err.data?.relatorio
-            ? `<br>Importado: ${err.data.relatorio.total_importado || 0} | Erros: ${err.data.relatorio.total_erros || 0}`
+            ? `<br>Importadas: ${err.data.relatorio.total_importado || 0} | Com erro: ${err.data.relatorio.total_erros || 0}`
             : "";
-          host.innerHTML = `<strong>Falha na importação:</strong> ${err.message}${detalhes}`;
+          host.innerHTML = `<strong>Não foi possível concluir a importação:</strong> ${err.message}${detalhes}`;
         }
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Importar arquivo";
       }
     });
 
+    document.getElementById("arquivoImportacao").addEventListener("change", atualizarNomeArquivoImportacao);
     window.addEventListener("focus", atualizarCategoriasNaTela);
     window.addEventListener("pageshow", atualizarCategoriasNaTela);
     iniciarTela();
   </script>
 </body>
 </html>
+

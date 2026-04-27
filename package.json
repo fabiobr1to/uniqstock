@@ -9,13 +9,14 @@
     "start": "node server.js",
     "dev": "node scripts/dev-server.js",
     "desktop": "electron .",
+    "files:start": "node services/uniqcode-files/server.js",
     "licenca:gerar": "node scripts/gerar-licenca.js",
     "db:test:postgres": "node scripts/test-postgres.js",
     "smoke:postgres": "node scripts/smoke-postgres.js",
     "db:migrate:postgres": "node scripts/migrate-sqlite-to-postgres.js",
     "dist:win": "electron-builder --win nsis",
     "dist:win:unsigned": "electron-builder --win nsis --publish never",
-    "dist:win:signed": "node scripts/check-signing-env.js && electron-builder --win nsis --publish never",
+    "dist:win:signed": "node scripts/check-signing-env.js && electron-builder --win nsis --publish never -c.forceCodeSigning=true",
     "build:win:ps1": "powershell -ExecutionPolicy Bypass -File scripts/build-win.ps1",
     "lint:js": "eslint \"**/*.js\"",
     "lint:js:fix": "eslint \"**/*.js\" --fix",
@@ -23,7 +24,7 @@
     "lint": "npm run lint:html && npm run lint:js",
     "lint:ci": "npm run lint",
     "prestart": "npm run lint:js:fix",
-    "predev": "npm run lint:js:fix",
+    "predev": "echo 'Skipping lint during dev'",
     "prepare": "husky"
   },
   "keywords": [],
@@ -71,6 +72,8 @@
       "**/*",
       "!.env",
       "!.env.*",
+      "!.runtime-security.json",
+      "!bootstrap-admin.txt",
       "!db/**",
       "!dist/**",
       "!dist-final/**",
@@ -91,7 +94,7 @@
       ],
       "icon": "build/uniqcode.ico",
       "publisherName": "UniqCode Programação",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "forceCodeSigning": false,
     "nsis": {

@@ -1,4 +1,21 @@
 (() => {
+  function garantirBlocoCabecalho(header) {
+    const blocoExistente = header.querySelector(":scope > .inventory-header-copy, :scope > .page-header-copy");
+    if (blocoExistente) return blocoExistente;
+
+    const copy = document.createElement("div");
+    copy.className = "page-header-copy";
+
+    const filhosOriginais = Array.from(header.children);
+    filhosOriginais.forEach((filho) => {
+      if (filho.classList.contains("page-user-meta")) return;
+      copy.appendChild(filho);
+    });
+
+    header.prepend(copy);
+    return copy;
+  }
+
   function formatarDataHoraAgora() {
     const agora = new Date();
     const data = agora.toLocaleDateString("pt-BR");
@@ -23,6 +40,7 @@
   document.addEventListener("DOMContentLoaded", async () => {
     const header = document.querySelector(".page-header");
     if (!header) return;
+    garantirBlocoCabecalho(header);
 
     try {
       const [user, licenca] = await Promise.all([
@@ -35,7 +53,7 @@
       if (licenca?.ativa) {
         const licencaAtiva = document.createElement("p");
         licencaAtiva.className = "page-license-status";
-        licencaAtiva.textContent = "Produto ativado";
+        licencaAtiva.textContent = "Licença ativa";
         info.appendChild(licencaAtiva);
       }
 

@@ -1,323 +1,376 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner | UniqStock</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="sidebar-auth.js" defer></script>
-    <script src="topbar-user.js" defer></script>
-    <script src="mobile-menu.js" defer></script>
-    <script src="vendor/html5-qrcode.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+  <script src="vendor/html5-qrcode.min.js"></script>
 </head>
-
 <body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
+        <p>Sistema de Inventário</p>
+      </div>
 
-    <div class="app-layout">
-
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
-                <p>Sistema de Inventário</p>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
-                <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
-                <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
-                <a href="scanner.html" class="ativo"><span class="sidebar-icon">📷</span> Scanner</a>
-                <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
-                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
-                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
-                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
-                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
-                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span> Almoxarifado</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html" class="ativo"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
       </nav>
 
-            <div class="sidebar-footer">
-                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <h2 id="scannerTitulo">Scanner</h2>
+        <p id="scannerDescricao">Leitura rápida de etiquetas QR Code</p>
+      </header>
+
+      <div class="container">
+        <section class="painel-form">
+          <h2 id="scannerLeituraTitulo">Leitura de QR Code</h2>
+          <div id="reader" style="width:350px;"></div>
+        </section>
+
+        <section class="painel-lista">
+          <div id="resultado">
+            <h2>Aguardando leitura</h2>
+            <p id="scannerAguardandoTexto">Escaneie um QR Code para carregar os dados.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let itemAtual = null;
+    let observerTraducao = null;
+
+    function atualizarLinkSidebar(seletor, href, label) {
+      const link = document.querySelector(seletor);
+      if (!link) return;
+      const iconHtml = link.querySelector(".sidebar-icon")?.outerHTML || "";
+      link.setAttribute("href", href);
+      link.innerHTML = `${iconHtml} ${label}`;
+    }
+
+    function obterModuloAtual() {
+      const modulo = new URLSearchParams(window.location.search).get("module");
+      if (String(modulo || "").toLowerCase() === "almoxarifado") {
+        return {
+          key: "almoxarifado",
+          titulo: "Scanner do Almoxarifado",
+          descricao: "Leitura rápida de etiquetas QR Code dos materiais do almoxarifado.",
+          aguardando: "Escaneie um QR Code para carregar os dados do material.",
+          itemLabel: "Material",
+          itemLabelLower: "material",
+          endpointConsulta: "/api/almoxarifado/item-qr",
+          endpointMovimentacao: "/api/almoxarifado/movimentacoes",
+          balcaoHref: "balcao-almoxarifado.html",
+          balcaoLabel: "Balcão do Almoxarifado",
+          inventarioHref: "almoxarifado.html",
+          inventarioLabel: "Inventário do Almoxarifado",
+          etiquetasHref: "etiquetas.html?module=almoxarifado",
+          scannerHref: "scanner.html?module=almoxarifado",
+          cadastroHref: "cadastro-almoxarifado.html",
+          cadastroLabel: "Cadastrar material",
+          movimentacoesHref: "movimentacoes-almoxarifado.html",
+          movimentacoesLabel: "Histórico do Almoxarifado"
+        };
+      }
+
+      return {
+        key: "ferramentaria",
+        titulo: "Scanner da Ferramentaria",
+        descricao: "Leitura rápida de etiquetas QR Code da Ferramentaria.",
+        aguardando: "Escaneie um QR Code para carregar os dados da ferramenta.",
+        itemLabel: "Ferramenta",
+        itemLabelLower: "ferramenta",
+        endpointConsulta: "/api/item-qr",
+        endpointMovimentacao: "/api/movimentacoes",
+        balcaoHref: "ferramentaria.html",
+        balcaoLabel: "Balcão da Ferramentaria",
+        inventarioHref: "index.html",
+        inventarioLabel: "Inventário da Ferramentaria",
+        etiquetasHref: "etiquetas.html",
+        scannerHref: "scanner.html",
+        cadastroHref: "cadastro-ferramenta.html",
+        cadastroLabel: "Cadastrar Ferramenta",
+        movimentacoesHref: "movimentacoes-ferramentaria.html",
+        movimentacoesLabel: "Histórico da Ferramentaria"
+      };
+    }
+
+    const moduleConfig = obterModuloAtual();
+
+    function ajustarLinksDoModulo() {
+      const linkEtiquetas = document.querySelector('.sidebar-nav a[href="etiquetas.html"]');
+      if (linkEtiquetas) linkEtiquetas.setAttribute("href", moduleConfig.etiquetasHref);
+
+      const linkScanner = document.querySelector('.sidebar-nav a[href="scanner.html"]');
+      if (linkScanner) linkScanner.setAttribute("href", moduleConfig.scannerHref);
+
+      atualizarLinkSidebar('.sidebar-nav a[href="index.html"]', moduleConfig.balcaoHref, moduleConfig.balcaoLabel);
+      atualizarLinkSidebar('.sidebar-nav a[href="almoxarifado.html"]', moduleConfig.inventarioHref, moduleConfig.inventarioLabel);
+      atualizarLinkSidebar('.sidebar-nav a[href="cadastro-ferramenta.html"]', moduleConfig.cadastroHref, moduleConfig.cadastroLabel);
+      atualizarLinkSidebar('.sidebar-nav a[href="movimentacoes.html"]', moduleConfig.movimentacoesHref, moduleConfig.movimentacoesLabel);
+    }
+
+    function aplicarRotulosDoModulo() {
+      document.title = `${moduleConfig.titulo} | UniqStock`;
+      document.getElementById("scannerTitulo").textContent = moduleConfig.titulo;
+      document.getElementById("scannerDescricao").textContent = moduleConfig.descricao;
+      document.getElementById("scannerLeituraTitulo").textContent = `Leitura de QR Code${moduleConfig.key === "almoxarifado" ? " do Almoxarifado" : ""}`;
+      document.getElementById("scannerAguardandoTexto").textContent = moduleConfig.aguardando;
+    }
+
+    function traduzirTextoOriginal(texto) {
+      const mapa = {
+        "Start Scanning": "Iniciar leitura",
+        "Stop Scanning": "Parar leitura",
+        "Launching Camera...": "Iniciando câmera...",
+        "Scan an Image File": "Ler arquivo de imagem",
+        "Scan using camera directly": "Usar câmera",
+        "Or drop an image to scan": "Ou solte uma imagem para leitura",
+        "Choose Image - No image chosen": "Escolher imagem - nenhuma selecionada",
+        "Request Camera Permissions": "Solicitar permissão da câmera",
+        "Camera scanning not supported.": "Leitura por câmera não suportada.",
+        "Camera permissions not granted.": "Permissão da câmera não concedida.",
+        "No camera found": "Nenhuma câmera encontrada",
+        "No QR code found": "Nenhum QR Code encontrado",
+        "Permission denied": "Permissão negada"
+      };
+
+      const chave = String(texto || "").trim();
+      return mapa[chave] || texto;
+    }
+
+    function traduzirFrasesParciais(texto) {
+      return String(texto || "")
+        .replace(/Choose Image\s*-\s*No image\s*chosen/gi, "Escolher imagem - nenhuma selecionada")
+        .replace(/Choose Image/gi, "Escolher imagem")
+        .replace(/No image\s*chosen/gi, "nenhuma selecionada")
+        .replace(/\bNo image\b/gi, "nenhuma")
+        .replace(/\bchosen\b/gi, "selecionada")
+        .replace(/Or drop an image to scan/gi, "Ou solte uma imagem para leitura")
+        .replace(/Scan using camera directly/gi, "Usar câmera")
+        .replace(/Launching Camera\.\.\./gi, "Iniciando câmera...");
+    }
+
+    function traduzirUiScanner() {
+      const reader = document.getElementById("reader");
+      if (!reader) return;
+
+      const elementosComTexto = reader.querySelectorAll("button, a, span, div, label, p");
+      elementosComTexto.forEach((el) => {
+        if (el.children.length > 0) return;
+        const textoAtual = String(el.textContent || "").trim();
+        if (!textoAtual) return;
+
+        const textoTraduzido = traduzirTextoOriginal(textoAtual);
+        if (textoTraduzido !== textoAtual) {
+          el.textContent = textoTraduzido;
+        } else {
+          const parcial = traduzirFrasesParciais(el.textContent);
+          if (parcial !== el.textContent) {
+            el.textContent = parcial;
+          }
+        }
+
+        if (el instanceof HTMLInputElement || el instanceof HTMLButtonElement) {
+          const valorAtual = String(el.value || "");
+          if (valorAtual) {
+            const valorTraduzido = traduzirFrasesParciais(traduzirTextoOriginal(valorAtual));
+            if (valorTraduzido !== valorAtual) {
+              el.value = valorTraduzido;
+            }
+          }
+        }
+      });
+
+      const walker = document.createTreeWalker(reader, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        const original = String(node.nodeValue || "").trim();
+        if (original) {
+          const traduzido = traduzirTextoOriginal(original);
+          if (traduzido !== original) {
+            node.nodeValue = String(node.nodeValue).replace(original, traduzido);
+          } else {
+            const parcial = traduzirFrasesParciais(node.nodeValue);
+            if (parcial !== node.nodeValue) {
+              node.nodeValue = parcial;
+            }
+          }
+        }
+        node = walker.nextNode();
+      }
+    }
+
+    function iniciarTraducaoAutomaticaScanner() {
+      const reader = document.getElementById("reader");
+      if (!reader) return;
+
+      traduzirUiScanner();
+
+      if (observerTraducao) {
+        observerTraducao.disconnect();
+      }
+
+      observerTraducao = new MutationObserver(() => {
+        traduzirUiScanner();
+      });
+
+      observerTraducao.observe(reader, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
+
+    function extrairCodigoEscaneado(decodedText) {
+      const texto = String(decodedText || "").trim();
+      if (!texto) return "";
+
+      if (/^https?:\/\//i.test(texto)) {
+        try {
+          const url = new URL(texto);
+          const segmentos = url.pathname.split("/").filter(Boolean);
+          return decodeURIComponent(segmentos[segmentos.length - 1] || "") || texto;
+        } catch (_) {
+          return texto;
+        }
+      }
+
+      return texto;
+    }
+
+    async function onScanSuccess(decodedText) {
+      try {
+        const codigoLido = extrairCodigoEscaneado(decodedText);
+        const resposta = await fetch(`${moduleConfig.endpointConsulta}/${encodeURIComponent(codigoLido)}`, {
+          credentials: "same-origin"
+        });
+        const item = await resposta.json();
+
+        if (!resposta.ok) {
+          document.getElementById("resultado").innerHTML = `
+            <h2>${moduleConfig.itemLabel} não localizado</h2>
+            <p>${codigoLido || decodedText}</p>
+          `;
+          return;
+        }
+
+        itemAtual = item;
+
+        document.getElementById("resultado").innerHTML = `
+          <h2>${moduleConfig.itemLabel} localizado</h2>
+
+          <div class="scanner-detalhes">
+            <p><strong>Código:</strong> ${item.codigo}</p>
+            <p><strong>${moduleConfig.itemLabel}:</strong> ${item.ferramenta}</p>
+            <p><strong>Categoria:</strong> ${item.categoria || "-"}</p>
+            <p><strong>Localização:</strong> ${item.localizacao || "-"}</p>
+          </div>
+
+          <hr style="margin:20px 0;">
+
+          <div class="scanner-form">
+            <div class="form-group">
+              <label>Quantidade</label>
+              <input type="number" id="quantidadeMov" value="1">
             </div>
-        </aside>
 
-        <main class="main-content">
-
-            <header class="page-header">
-                <h2>Scanner</h2>
-                <p>Leitura rápida de etiquetas QR Code</p>
-            </header>
-
-            <div class="container">
-
-                <section class="painel-form">
-                    <h2>Leitura de QR Code</h2>
-                    <div id="reader" style="width:350px;"></div>
-                </section>
-
-                <section class="painel-lista">
-
-                    <div id="resultado">
-                        <h2>Aguardando leitura</h2>
-                        <p>Escaneie um QR Code para carregar os dados.</p>
-                    </div>
-
-                </section>
-
+            <div class="form-group">
+              <label>Obra</label>
+              <input type="text" id="obraMov">
             </div>
 
-        </main>
+            <div class="form-group">
+              <label>Responsável</label>
+              <input type="text" id="funcionarioMov">
+            </div>
 
-    </div>
+            <div class="form-group">
+              <label>Observação</label>
+              <input type="text" id="observacaoMov">
+            </div>
 
-    <script>
+            <div style="display:flex; gap:12px; flex-wrap:wrap">
+              <button onclick="registrarMov('ENTRADA')">Registrar entrada</button>
+              <button onclick="registrarMov('SAIDA')">Registrar saída</button>
+            </div>
 
-        let itemAtual = null
-        let observerTraducao = null
+            <p id="mensagemMov"></p>
+          </div>
+        `;
+      } catch (_) {
+        document.getElementById("resultado").innerHTML = `
+          <p>Não foi possível consultar o ${moduleConfig.itemLabelLower}.</p>
+        `;
+      }
+    }
 
-        function traduzirTextoOriginal(texto) {
-            const mapa = {
-                "Start Scanning": "Iniciar leitura",
-                "Stop Scanning": "Parar leitura",
-                "Launching Camera...": "Iniciando câmera...",
-                "Scan an Image File": "Ler arquivo de imagem",
-                "Scan using camera directly": "Usar câmera",
-                "Or drop an image to scan": "Ou solte uma imagem para leitura",
-                "Choose Image - No image chosen": "Escolher imagem - nenhuma selecionada",
-                "Request Camera Permissions": "Solicitar permissão da câmera",
-                "Camera scanning not supported.": "Leitura por câmera não suportada.",
-                "Camera permissions not granted.": "Permissão da câmera não concedida.",
-                "No camera found": "Nenhuma câmera encontrada",
-                "No QR code found": "Nenhum QR Code encontrado",
-                "Permission denied": "Permissão negada"
-            }
+    async function registrarMov(tipo) {
+      if (!itemAtual) return;
 
-            const chave = String(texto || "").trim()
-            return mapa[chave] || texto
-        }
+      const quantidade = Number(document.getElementById("quantidadeMov").value);
+      const obra = document.getElementById("obraMov").value;
+      const funcionario = document.getElementById("funcionarioMov").value;
+      const observacao = document.getElementById("observacaoMov").value;
+      const mensagem = document.getElementById("mensagemMov");
 
-        function traduzirFrasesParciais(texto) {
-            return String(texto || "")
-                .replace(/Choose Image\s*-\s*No image\s*chosen/gi, "Escolher imagem - nenhuma selecionada")
-                .replace(/Choose Image/gi, "Escolher imagem")
-                .replace(/No image\s*chosen/gi, "nenhuma selecionada")
-                .replace(/\bNo image\b/gi, "nenhuma")
-                .replace(/\bchosen\b/gi, "selecionada")
-                .replace(/Or drop an image to scan/gi, "Ou solte uma imagem para leitura")
-                .replace(/Scan using camera directly/gi, "Usar câmera")
-                .replace(/Launching Camera\.\.\./gi, "Iniciando câmera...");
-        }
+      const resposta = await fetch(moduleConfig.endpointMovimentacao, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          item_id: itemAtual.id,
+          tipo,
+          quantidade,
+          obra,
+          funcionario,
+          observacao
+        })
+      });
 
-        function traduzirUiScanner() {
-            const reader = document.getElementById("reader")
-            if (!reader) return
+      const dados = await resposta.json();
 
-            const elementosComTexto = reader.querySelectorAll("button, a, span, div, label, p")
-            elementosComTexto.forEach((el) => {
-                if (el.children.length > 0) return
-                const textoAtual = String(el.textContent || "").trim()
-                if (!textoAtual) return
+      if (!resposta.ok) {
+        mensagem.textContent = dados.error;
+        return;
+      }
 
-                const textoTraduzido = traduzirTextoOriginal(textoAtual)
-                if (textoTraduzido !== textoAtual) {
-                    el.textContent = textoTraduzido
-                } else {
-                    const parcial = traduzirFrasesParciais(el.textContent)
-                    if (parcial !== el.textContent) {
-                        el.textContent = parcial
-                    }
-                }
+      mensagem.textContent = "Movimentação registrada.";
+    }
 
-                if (el instanceof HTMLInputElement || el instanceof HTMLButtonElement) {
-                    const valorAtual = String(el.value || "")
-                    if (valorAtual) {
-                        const valorTraduzido = traduzirFrasesParciais(traduzirTextoOriginal(valorAtual))
-                        if (valorTraduzido !== valorAtual) {
-                            el.value = valorTraduzido
-                        }
-                    }
-                }
-            })
+    window.registrarMov = registrarMov;
 
-            const walker = document.createTreeWalker(reader, NodeFilter.SHOW_TEXT)
-            let node = walker.nextNode()
-            while (node) {
-                const original = String(node.nodeValue || "").trim()
-                if (original) {
-                    const traduzido = traduzirTextoOriginal(original)
-                    if (traduzido !== original) {
-                        node.nodeValue = String(node.nodeValue).replace(original, traduzido)
-                    } else {
-                        const parcial = traduzirFrasesParciais(node.nodeValue)
-                        if (parcial !== node.nodeValue) {
-                            node.nodeValue = parcial
-                        }
-                    }
-                }
-                node = walker.nextNode()
-            }
-        }
-
-        function iniciarTraducaoAutomaticaScanner() {
-            const reader = document.getElementById("reader")
-            if (!reader) return
-
-            traduzirUiScanner()
-
-            if (observerTraducao) {
-                observerTraducao.disconnect()
-            }
-
-            observerTraducao = new MutationObserver(() => {
-                traduzirUiScanner()
-            })
-
-            observerTraducao.observe(reader, {
-                childList: true,
-                subtree: true,
-                characterData: true
-            })
-        }
-
-        async function onScanSuccess(decodedText) {
-
-            try {
-
-                const resposta = await fetch(`/api/item-qr/${decodedText}`)
-                const item = await resposta.json()
-
-                if (!resposta.ok) {
-
-                    document.getElementById("resultado").innerHTML = `
-                    <h2>Item não localizado</h2>
-      <p>${decodedText}</p>
-      `
-                    return
-                }
-
-                itemAtual = item
-
-                document.getElementById("resultado").innerHTML = `
-
-                    <h2>Item localizado</h2>
-
-    <div class="scanner-detalhes">
-
-    <p><strong>Código:</strong> ${item.codigo}</p>
-    <p><strong>Ferramenta:</strong> ${item.ferramenta}</p>
-    <p><strong>Categoria:</strong> ${item.categoria || "-"}</p>
-    <p><strong>Localização:</strong> ${item.localizacao || "-"}</p>
-
-    </div>
-
-    <hr style="margin:20px 0;">
-
-    <div class="scanner-form">
-
-      <div class="form-group">
-        <label>Quantidade</label>
-        <input type="number" id="quantidadeMov" value="1">
-      </div>
-
-      <div class="form-group">
-        <label>Obra</label>
-        <input type="text" id="obraMov">
-      </div>
-
-      <div class="form-group">
-        <label>Funcionário</label>
-        <input type="text" id="funcionarioMov">
-      </div>
-
-      <div class="form-group">
-        <label>Observação</label>
-        <input type="text" id="observacaoMov">
-      </div>
-
-      <div style="display:flex; gap:12px; flex-wrap:wrap">
-
-        <button onclick="registrarMov('ENTRADA')">
-          Registrar Entrada
-        </button>
-
-        <button onclick="registrarMov('SAIDA')">
-          Registrar Saída
-        </button>
-
-      </div>
-
-      <p id="mensagemMov"></p>
-
-    </div>
-    `
-            }
-
-            catch (erro) {
-
-                document.getElementById("resultado").innerHTML = `
-    <p>Erro ao consultar ferramenta</p>
-    `
-            }
-
-        }
-
-        async function registrarMov(tipo) {
-
-            if (!itemAtual) return
-
-            const quantidade = Number(document.getElementById("quantidadeMov").value)
-            const obra = document.getElementById("obraMov").value
-            const funcionario = document.getElementById("funcionarioMov").value
-            const observacao = document.getElementById("observacaoMov").value
-
-            const mensagem = document.getElementById("mensagemMov")
-
-            const resposta = await fetch("/api/movimentacoes", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    item_id: itemAtual.id,
-                    tipo: tipo,
-                    quantidade: quantidade,
-                    obra: obra,
-                    funcionario: funcionario,
-                    observacao: observacao
-                })
-            })
-
-            const dados = await resposta.json()
-
-            if (!resposta.ok) {
-
-                mensagem.textContent = dados.error
-                return
-
-            }
-
-            mensagem.textContent = "Movimentação registrada"
-
-        }
-
-        const html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader",
-            { fps: 10, qrbox: 250 }
-        )
-
-        html5QrcodeScanner.render(onScanSuccess)
-        iniciarTraducaoAutomaticaScanner()
-
-    </script>
-
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    aplicarRotulosDoModulo();
+    ajustarLinksDoModulo();
+    html5QrcodeScanner.render(onScanSuccess);
+    iniciarTraducaoAutomaticaScanner();
+  </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-

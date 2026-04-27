@@ -1,189 +1,140 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movimentações | UniqStock</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="sidebar-auth.js" defer></script>
-    <script src="topbar-user.js" defer></script>
-    <script src="mobile-menu.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Históricos dos módulos | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+  <style>
+    .history-hub{
+      display:grid;
+      gap:18px;
+    }
+
+    .history-hub-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:18px;
+    }
+
+    .history-hub-card{
+      padding:24px;
+      border:1px solid #e2e8f0;
+      border-radius:24px;
+      background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow:0 14px 30px rgba(15, 23, 42, .06);
+      display:grid;
+      gap:14px;
+    }
+
+    .history-hub-card p{
+      margin:0;
+      color:#64748b;
+      line-height:1.55;
+    }
+
+    .history-hub-kicker{
+      display:inline-flex;
+      align-items:center;
+      width:max-content;
+      padding:7px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+    }
+
+    .history-hub-kicker.tools{
+      background:#dbeafe;
+      color:#1d4ed8;
+    }
+
+    .history-hub-kicker.warehouse{
+      background:#ffedd5;
+      color:#c2410c;
+    }
+
+    .history-hub-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    @media (max-width: 980px){
+      .history-hub-grid{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
+        <p>Sistema de Inventário</p>
+      </div>
 
-    <div class="app-layout">
-
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
-                <p>Sistema de Inventário</p>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
-                <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
-                <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
-                <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
-                <a href="movimentacoes.html" class="ativo"><span class="sidebar-icon">📑</span> Movimentações</a>
-                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
-                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
-                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
-                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
-                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span> Ferramentaria</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span> Almoxarifado</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html" class="ativo"><span class="sidebar-icon">📑</span> Históricos dos módulos</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
       </nav>
 
-            <div class="sidebar-footer">
-                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
-            </div>
-        </aside>
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
 
-        <main class="main-content">
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Módulos separados</span>
+          <h2>Históricos de movimentação</h2>
+          <p>Escolha o histórico da Ferramentaria ou o histórico do Almoxarifado. Os registros agora ficam organizados por módulo.</p>
+        </div>
+      </header>
 
-            <header class="page-header">
-                <h2>Movimentações</h2>
-                <p>Histórico de entradas e saídas de itens</p>
-            </header>
+      <div class="container">
+        <section class="painel-form inventory-panel history-hub">
+          <p class="inventory-summary">A Ferramentaria da PRZ e o Almoxarifado da Sicla Engenharia agora seguem fluxos próprios de movimentação.</p>
 
-            <div class="container">
+          <div class="history-hub-grid">
+            <article class="history-hub-card">
+              <span class="history-hub-kicker tools">Ferramentaria</span>
+              <h2>Histórico da Ferramentaria</h2>
+              <p>Veja apenas as entregas e devoluções da Ferramentaria, sem misturar registros do Almoxarifado.</p>
+              <div class="history-hub-actions">
+                <a class="btn-primary inventory-primary-btn" href="movimentacoes-ferramentaria.html">Abrir histórico da Ferramentaria</a>
+              </div>
+            </article>
 
-                <section class="painel-lista">
-
-                    <div class="tabela-wrap">
-
-                        <table class="tabela-mov">
-
-                            <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Código</th>
-                                    <th>Ferramenta</th>
-                                    <th>Tipo</th>
-                                    <th>Quantidade</th>
-                                    <th>Obra</th>
-                                    <th>Funcionário</th>
-                                    <th>Observação</th>
-                                </tr>
-                            </thead>
-
-                            <tbody id="tabelaMov"></tbody>
-
-                        </table>
-
-                    </div>
-
-                </section>
-
-            </div>
-
-        </main>
-
-    </div>
-
-    <script>
-
-        const tabelaMov = document.getElementById("tabelaMov")
-        const TOTAL_COLUNAS = 8
-
-        function escapeHtml(valor) {
-            return String(valor ?? "-")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-        }
-
-        function mostrarSkeleton(qtdLinhas = 6) {
-            tabelaMov.innerHTML = ""
-            for (let i = 0; i < qtdLinhas; i += 1) {
-                const tr = document.createElement("tr")
-                tr.className = "mov-skeleton"
-                tr.innerHTML = `
-                    <td><div class="mov-skeleton-line"></div></td>
-                    <td><div class="mov-skeleton-line"></div></td>
-                    <td><div class="mov-skeleton-line"></div></td>
-                    <td><div class="mov-skeleton-line"></div></td>
-                    <td><div class="mov-skeleton-line mov-skeleton-line-sm"></div></td>
-                    <td><div class="mov-skeleton-line"></div></td>
-                    <td><div class="mov-skeleton-line"></div></td>
-                    <td><div class="mov-skeleton-line"></div></td>
-                `
-                tabelaMov.appendChild(tr)
-            }
-        }
-
-        function mostrarEstadoTabela(texto, tipo = "vazio") {
-            const botaoRetry = tipo === "erro"
-                ? `<button type="button" class="btn-retry-mov" onclick="carregarMov()">Tentar novamente</button>`
-                : ""
-            tabelaMov.innerHTML = `
-                <tr class="mov-estado mov-estado-${tipo}">
-                    <td colspan="${TOTAL_COLUNAS}">
-                        <div class="mov-estado-msg">${texto}</div>
-                        ${botaoRetry}
-                    </td>
-                </tr>
-            `
-        }
-
-        async function carregarMov() {
-            mostrarSkeleton()
-
-            try {
-                const res = await fetch("/api/movimentacoes")
-                if (!res.ok) throw new Error("Falha ao consultar movimentações")
-                const movs = await res.json()
-
-                if (!Array.isArray(movs) || movs.length === 0) {
-                    mostrarEstadoTabela("Nenhuma movimentação registrada até o momento.", "vazio")
-                    return
-                }
-
-                tabelaMov.innerHTML = ""
-
-                movs.forEach(m => {
-
-                    const tr = document.createElement("tr")
-
-                    const data = m.data
-                        ? new Date(m.data).toLocaleString("pt-BR")
-                        : "-"
-
-                    tr.innerHTML = `
-    
-    <td data-label="Data">${escapeHtml(data)}</td>
-    <td data-label="Código">${escapeHtml(m.codigo || "-")}</td>
-    <td class="cell-truncate" data-label="Ferramenta" title="${escapeHtml(m.ferramenta || "-")}">${escapeHtml(m.ferramenta || "-")}</td>
-    <td data-label="Tipo">${escapeHtml(m.tipo || "-")}</td>
-    <td data-label="Quantidade">${escapeHtml(m.quantidade ?? "-")}</td>
-    <td class="cell-truncate" data-label="Obra" title="${escapeHtml(m.obra || "-")}">${escapeHtml(m.obra || "-")}</td>
-    <td class="cell-truncate" data-label="Funcionário" title="${escapeHtml(m.funcionario || "-")}">${escapeHtml(m.funcionario || "-")}</td>
-    <td class="cell-truncate" data-label="Observação" title="${escapeHtml(m.observacao || "-")}">${escapeHtml(m.observacao || "-")}</td>
-    
-    `
-
-                    tabelaMov.appendChild(tr)
-
-                })
-            } catch (error) {
-                mostrarEstadoTabela("Não foi possível carregar as movimentações. Tente atualizar a página.", "erro")
-            }
-        }
-
-        carregarMov()
-
-    </script>
-
+            <article class="history-hub-card">
+              <span class="history-hub-kicker warehouse">Almoxarifado</span>
+              <h2>Histórico do Almoxarifado</h2>
+              <p>Veja apenas as entradas e saídas do Almoxarifado, sem misturar registros da Ferramentaria.</p>
+              <div class="history-hub-actions">
+                <a class="btn-primary inventory-primary-btn" href="movimentacoes-almoxarifado.html">Abrir histórico do Almoxarifado</a>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
 </body>
-
 </html>
-
-
-
-
-
-
-
-

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,19 +23,111 @@
 
     .lote-grid {
       display: grid;
-      grid-template-columns: repeat(3, 50mm);
-      gap: 1mm;
+      grid-template-columns: repeat(auto-fit, minmax(95mm, 95mm));
+      gap: 4mm;
       align-content: start;
-      justify-content: start;
+      justify-content: center;
     }
 
     .etiqueta-slot {
       position: relative;
-      width: 50mm;
-      min-height: 42mm;
+      width: 95mm;
+      min-height: 95mm;
       display: flex;
       align-items: stretch;
       justify-content: stretch;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .lote-grid .etiqueta-conteudo {
+      width: 100%;
+      min-height: 95mm;
+      padding: 5mm 5mm 4.5mm;
+      justify-content: flex-start;
+    }
+
+    .lote-grid .etiqueta-logo {
+      max-width: 54mm;
+      margin-bottom: 0;
+    }
+
+    .lote-grid .etiqueta-codigo {
+      min-width: 60mm;
+      padding: 2.2mm 5mm;
+      font-size: 26px !important;
+      margin: 0 !important;
+    }
+
+    .lote-grid .etiqueta-conteudo h3 {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.24;
+      margin: 0;
+      min-height: calc(1.24em * 2);
+    }
+
+    .lote-grid .etiqueta-info {
+      gap: .7mm;
+      margin: 0;
+    }
+
+    .lote-grid .etiqueta-topo {
+      gap: 1.6mm;
+      margin-bottom: 4mm;
+    }
+
+    .lote-grid .etiqueta-corpo {
+      gap: 4.5mm;
+    }
+
+    .lote-grid .etiqueta-detalhes {
+      gap: 3.2mm;
+      padding-bottom: 1.2mm;
+    }
+
+    .lote-grid .etiqueta-info-titulo {
+      font-size: 15px !important;
+      line-height: 1.1;
+    }
+
+    .lote-grid .etiqueta-info-valor {
+      font-size: 14px !important;
+      line-height: 1.18;
+    }
+
+    .lote-grid .etiqueta-modelo {
+      font-size: 14px !important;
+      line-height: 1.18;
+    }
+
+    .lote-grid .etiqueta-qr-area {
+      width: 31mm;
+      gap: 1.4mm;
+    }
+
+    .lote-grid .etiqueta-qr {
+      width: 31mm;
+      height: 31mm;
+    }
+
+    .lote-grid .etiqueta-qr-legenda {
+      font-size: 11px !important;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .lote-grid .etiqueta-qr-indisponivel {
+      width: 31mm;
+      min-height: 31mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
     }
 
     .etiqueta-slot::before {
@@ -69,7 +160,8 @@
       }
 
       .lote-grid {
-        gap: 0.9mm;
+        gap: 2mm;
+        justify-content: space-between;
       }
 
       .etiqueta-slot::before {
@@ -78,11 +170,10 @@
     }
   </style>
 </head>
-
 <body>
   <main class="lote-page">
     <section class="lote-topo">
-      <h2>Etiquetas em lote</h2>
+      <h2 id="loteTitulo">Etiquetas em lote</h2>
       <div class="importacao-acoes">
         <button type="button" id="btnImprimir">Imprimir</button>
         <button type="button" id="btnFechar">Fechar</button>
@@ -94,7 +185,32 @@
   </main>
 
   <script>
-    const LABEL_BATCH_STORAGE_KEY = "uniqstock.labelBatchIds";
+    function obterModuloAtual() {
+      const modulo = new URLSearchParams(window.location.search).get("module");
+      if (String(modulo || "").toLowerCase() === "almoxarifado") {
+        return {
+          key: "almoxarifado",
+          titulo: "Etiquetas em lote do Almoxarifado",
+          itemLabelSingular: "material",
+          listaUrl: "/api/almoxarifado/itens",
+          qrUrl: (id) => `/api/almoxarifado/qrcode/${id}`,
+          storageKey: "uniqstock.almoxLabelBatchIds",
+          fallback: "/almoxarifado.html"
+        };
+      }
+
+      return {
+        key: "ferramentaria",
+        titulo: "Etiquetas em lote",
+        itemLabelSingular: "item",
+        listaUrl: "/api/itens",
+        qrUrl: (id) => `/api/qrcode/${id}`,
+        storageKey: "uniqstock.labelBatchIds",
+        fallback: "/index.html"
+      };
+    }
+
+    const moduleConfig = obterModuloAtual();
 
     function getIdsDaURL() {
       const params = new URLSearchParams(window.location.search);
@@ -107,7 +223,7 @@
 
     function getIdsLocais() {
       try {
-        const data = JSON.parse(localStorage.getItem(LABEL_BATCH_STORAGE_KEY) || "[]");
+        const data = JSON.parse(localStorage.getItem(moduleConfig.storageKey) || "[]");
         return Array.isArray(data)
           ? data.map((v) => Number(v)).filter((v) => Number.isFinite(v) && v > 0)
           : [];
@@ -117,23 +233,59 @@
     }
 
     async function getJson(url) {
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: "same-origin" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro");
       return data;
     }
 
-    function renderEtiqueta(item, qr) {
+    function renderEtiqueta(item, qrData) {
+      const codigo = item.codigo || "-";
+      const nomeItem = item.ferramenta || "-";
+      const categoria = item.categoria || "-";
+      const marcaModelo = item.marca_modelo || "-";
+      const qrLegenda = `${moduleConfig.key === "almoxarifado" ? "ALM" : "PRZ"}-${codigo}`;
+      const qrMarkup = qrData
+        ? `<img src="${qrData}" alt="QR Code" class="etiqueta-qr">`
+        : `<div class="etiqueta-qr-indisponivel">QR indisponível</div>`;
+
       return `
         <div class="etiqueta-slot">
           <div class="etiqueta-conteudo">
-            <img src="/img/uniqstock-logo.png" alt="UniqCode" class="etiqueta-logo">
+            <div class="etiqueta-topo">
+              <img src="/img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="etiqueta-logo">
+              <p class="etiqueta-codigo">Código: ${codigo}</p>
+              <h3>${nomeItem}</h3>
+            </div>
+            <div class="etiqueta-corpo">
+              <div class="etiqueta-detalhes">
+                <div class="etiqueta-info">
+                  <p class="etiqueta-info-titulo">Categoria:</p>
+                  <p class="etiqueta-info-valor etiqueta-info-valor-limite">${categoria}</p>
+                </div>
+                <p class="etiqueta-modelo"><strong>Marca / Modelo:</strong> <span>${marcaModelo}</span></p>
+              </div>
+              <div class="etiqueta-qr-area">
+                ${qrMarkup}
+                <p class="etiqueta-qr-legenda">${qrLegenda}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEtiquetaLegacy(item) {
+      return `
+        <div class="etiqueta-slot">
+          <div class="etiqueta-conteudo">
+            <img src="/img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="etiqueta-logo">
+            <p class="etiqueta-codigo">Código: ${item.codigo || "-"}</p>
             <h3>${item.ferramenta || "-"}</h3>
             <div class="etiqueta-info">
-              <p><strong>Código:</strong> ${item.codigo || "-"}</p>
               <p><strong>Categoria:</strong> ${item.categoria || "-"}</p>
+              <p><strong>Marca / Modelo:</strong> ${item.marca_modelo || "-"}</p>
             </div>
-            <img src="${qr}" alt="QR Code" class="etiqueta-qr">
           </div>
         </div>
       `;
@@ -145,35 +297,60 @@
       const ids = getIdsDaURL().length ? getIdsDaURL() : getIdsLocais();
 
       if (ids.length === 0) {
-        loteStatus.textContent = "Nenhum item selecionado para impressão.";
+        loteStatus.textContent = `Selecione pelo menos um ${moduleConfig.itemLabelSingular} para imprimir as etiquetas.`;
         return;
       }
 
       loteStatus.textContent = `Gerando ${ids.length} etiqueta(s)...`;
 
       await getJson("/api/me");
-      const itens = await getJson("/api/itens");
-      const mapaItens = new Map(itens.map((i) => [Number(i.id), i]));
+      const itens = await getJson(moduleConfig.listaUrl);
+      const mapaItens = new Map(itens.map((item) => [Number(item.id), item]));
 
-      const blocos = await Promise.all(
-        ids.map(async (id) => {
-          const item = mapaItens.get(id);
-          if (!item) return "";
-          const qr = await getJson(`/api/qrcode/${id}`);
-          return renderEtiqueta(item, qr.qr);
-        })
-      );
+      const blocos = await Promise.all(ids.map(async (id) => {
+        const item = mapaItens.get(id);
+        if (!item) return "";
+        try {
+          const qrInfo = await getJson(moduleConfig.qrUrl(id));
+          return renderEtiqueta(item, qrInfo.qr || "");
+        } catch (_) {
+          return renderEtiqueta(item, "");
+        }
+      }));
 
       loteGrid.innerHTML = blocos.filter(Boolean).join("");
       loteStatus.textContent = `${loteGrid.children.length} etiqueta(s) pronta(s) para impressão.`;
     }
+
+    document.getElementById("loteTitulo").textContent = moduleConfig.titulo;
 
     document.getElementById("btnImprimir").addEventListener("click", () => {
       window.print();
     });
 
     document.getElementById("btnFechar").addEventListener("click", () => {
-      window.close();
+      let destinoFallback = moduleConfig.fallback;
+
+      try {
+        if (document.referrer) {
+          const ref = new URL(document.referrer, window.location.origin);
+          if (ref.origin === window.location.origin) {
+            destinoFallback = `${ref.pathname}${ref.search}${ref.hash}`;
+          }
+        }
+      } catch (_) {}
+
+      if (window.opener && !window.opener.closed) {
+        window.close();
+        return;
+      }
+
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+
+      window.location.href = destinoFallback;
     });
 
     carregarLote().catch((e) => {
@@ -182,17 +359,8 @@
         window.location.href = "/login.html";
         return;
       }
-      const loteStatus = document.getElementById("loteStatus");
-      loteStatus.textContent = msg || "Erro ao gerar lote de etiquetas.";
+      document.getElementById("loteStatus").textContent = msg || "Não foi possível gerar as etiquetas em lote.";
     });
   </script>
 </body>
-
 </html>
-
-
-
-
-
-
-

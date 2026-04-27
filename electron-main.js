@@ -1,12 +1,33 @@
 const { app, BrowserWindow, shell, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const http = require("http");
+const net = require("net");
 const path = require("path");
 const fs = require("fs");
 
-const SERVER_URL = "http://127.0.0.1:3000";
 let mainWindow = null;
 let updateCheckInProgress = false;
+let backendServer = null;
+let serverUrl = "";
+
+function obterPortaLivre() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.on("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      probe.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(port);
+      });
+    });
+  });
+}
 
 function esperarServidor(url, timeoutMs = 15000) {
   const inicio = Date.now();
@@ -39,6 +60,26 @@ function esperarServidor(url, timeoutMs = 15000) {
   });
 }
 
+function iniciarServidorDesktop(url) {
+  return new Promise((resolve, reject) => {
+    let finalizado = false;
+    const finalizar = (handler, valor) => {
+      if (finalizado) return;
+      finalizado = true;
+      backendServer?.off?.("error", onError);
+      handler(valor);
+    };
+    const onError = (error) => finalizar(reject, error);
+
+    backendServer = require(path.join(__dirname, "server.js"));
+    backendServer?.once?.("error", onError);
+
+    esperarServidor(url)
+      .then(() => finalizar(resolve, backendServer))
+      .catch((error) => finalizar(reject, error));
+  });
+}
+
 function criarJanela() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -53,7 +94,7 @@ function criarJanela() {
     }
   });
 
-  mainWindow.loadURL(`${SERVER_URL}/login.html`);
+  mainWindow.loadURL(`${serverUrl}/login.html`);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) {
       shell.openExternal(url);
@@ -133,15 +174,32 @@ app.whenReady().then(async () => {
   const runtimeDir = path.join(app.getPath("userData"), "runtime");
   fs.mkdirSync(runtimeDir, { recursive: true });
   process.env.UNIQSTOCK_RUNTIME_DIR = runtimeDir;
+  process.env.UNIQSTOCK_APP_PACKAGED = app.isPackaged ? "1" : "0";
+  process.env.PORT = String(await obterPortaLivre());
+  serverUrl = `http://127.0.0.1:${process.env.PORT}`;
 
-  // Inicia o backend dentro do processo do app desktop.
-  require(path.join(__dirname, "server.js"));
-  await esperarServidor(SERVER_URL);
+  try {
+    // Inicia o backend dentro do processo do app desktop.
+    await iniciarServidorDesktop(serverUrl);
+  } catch (error) {
+    dialog.showErrorBox(
+      "Falha ao iniciar o UniqStock",
+      error?.message || String(error)
+    );
+    app.quit();
+    return;
+  }
+
   criarJanela();
   configurarAtualizacaoAutomatica();
 });
 
 app.on("window-all-closed", () => {
+  if (backendServer?.close) {
+    try {
+      backendServer.close();
+    } catch (_) {}
+  }
   if (process.platform !== "darwin") {
     app.quit();
   }

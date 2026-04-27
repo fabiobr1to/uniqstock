@@ -15,12 +15,12 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
         <p>Sistema de Inventário</p>
       </div>
       <nav class="sidebar-nav">
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
         <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
         <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
         <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
@@ -61,7 +61,7 @@
                 <option value="0">Negado</option>
               </select>
             </div>
-            <div class="perm-item"><label for="ver_inventario">Ver Inventário</label>
+            <div class="perm-item"><label for="ver_inventario">Ver Inventários dos módulos</label>
               <select id="ver_inventario">
                 <option value="1">Permitido</option>
                 <option value="0">Negado</option>
@@ -217,7 +217,7 @@
         await salvarPermissoes(id);
         msg.textContent = "Permissões atualizadas";
       } catch (e) {
-        msg.textContent = e.message || "Erro ao salvar";
+        msg.textContent = e.message || "Não foi possível salvar as permissões.";
       }
     });
 
@@ -232,6 +232,10 @@
 </body>
 
 </html>
+
+
+
+
 
 
 

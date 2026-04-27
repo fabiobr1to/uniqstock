@@ -12,19 +12,19 @@
 <body>
   <div class="app-layout">
     <aside class="sidebar">
-      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
-        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+      <div class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo">
         <p>Sistema de Inventário</p>
-      </a>
+      </div>
 
       <nav class="sidebar-nav">
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
-        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário</span></a>
-        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="balcao-almoxarifado.html"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Balcão do Almoxarifado</span></a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Inventário do Almoxarifado</span></a>
         <a href="cadastro-almoxarifado.html" class="ativo"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Cadastrar Material</span></a>
-        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
-        <a href="scanner.html"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
-        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Movimentações</span></a>
+        <a href="etiquetas.html?module=almoxarifado"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html?module=almoxarifado"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes-almoxarifado.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Histórico do Almoxarifado</span></a>
         <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
         <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
         <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
@@ -42,14 +42,14 @@
         <div class="inventory-header-copy">
           <span class="inventory-kicker">Almoxarifado</span>
           <h2>Cadastrar material de consumo</h2>
-          <p>Cadastre materiais consumíveis de materiais de consumo, como parafusos, porcas, arruelas, arruelas de pressão e itens de reposição.</p>
+          <p>Cadastre materiais de consumo do Almoxarifado, como parafusos, porcas, arruelas, itens de reposição e insumos de manutenção.</p>
         </div>
       </header>
 
       <div class="container tool-grid">
         <section class="painel-form tool-panel">
           <h2>Novo material</h2>
-          <p class="tool-panel-copy">Esse cadastro alimenta apenas o inventário próprio de materiais de consumo. O código é gerado automaticamente no padrão ALM-0001.</p>
+          <p class="tool-panel-copy">Esse cadastro alimenta apenas o Almoxarifado. O código é gerado automaticamente no padrão ALM-0001.</p>
           <form id="formAlmoxItem" autocomplete="off" class="tool-form">
             <div class="form-group">
               <label>Código</label>
@@ -108,7 +108,6 @@
             </div>
             <div class="tool-actions">
               <button type="submit" class="btn-primary tool-primary-btn">Salvar material</button>
-              <a href="almoxarifado.html" class="btn-secondary tool-secondary-link">Voltar aos materiais de consumo</a>
             </div>
           </form>
           <p id="mensagemCadastroAlmox" class="tool-status"></p>
@@ -116,7 +115,7 @@
 
         <section class="painel-form tool-panel tool-panel-secondary">
           <h2>Exemplos de uso</h2>
-          <p class="tool-panel-copy">Use esse cadastro para materiais de consumo e reposição de materiais de consumo.</p>
+          <p class="tool-panel-copy">Use esse cadastro para materiais de consumo, reposição de estoque e itens de apoio operacional.</p>
           <div class="inventory-summary-grid">
             <article class="inventory-summary-card">
               <span class="inventory-summary-label">Fixação</span>
@@ -229,3 +228,7 @@
   </script>
 </body>
 </html>
+
+
+
+

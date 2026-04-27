@@ -35,7 +35,7 @@
             text-decoration: none;
             color: #fff;
             background: #111827;
-            font-weight: bold;
+            font-weight: 700;
         }
 
         .dashboard-toolbar .btn-atalho.primario {
@@ -56,7 +56,7 @@
             padding: 8px 12px;
             border-radius: 999px;
             font-size: 13px;
-            font-weight: bold;
+            font-weight: 700;
             border: none;
             cursor: pointer;
             transition: transform .15s ease, filter .15s ease;
@@ -94,12 +94,12 @@
 
         .dashboard-cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 16px;
         }
 
         .card-resumo .numero {
-            font-size: 42px;
+            font-size: 38px;
             line-height: 1;
             margin-bottom: 8px;
             font-weight: 800;
@@ -123,7 +123,7 @@
             padding: 6px 10px;
             border-radius: 999px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 700;
         }
 
         .status-semaforo.ok {
@@ -162,7 +162,7 @@
 
         .grafico-item {
             display: grid;
-            grid-template-columns: 90px 1fr 36px;
+            grid-template-columns: 100px 1fr 36px;
             align-items: center;
             gap: 8px;
             font-size: 12px;
@@ -198,7 +198,7 @@
 
         #buscaPainel {
             width: 100%;
-            max-width: 320px;
+            max-width: 340px;
         }
 
         #painelResumoTabela {
@@ -207,7 +207,7 @@
         }
 
         .dashboard-table table {
-            min-width: 980px;
+            min-width: 1120px;
         }
 
         .dashboard-table tbody tr:nth-child(even) {
@@ -221,7 +221,36 @@
         .dashboard-table .col-estoque {
             text-align: right;
             font-variant-numeric: tabular-nums;
-            font-weight: bold;
+            font-weight: 700;
+        }
+
+        .dashboard-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+
+        .dashboard-tag.tools {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .dashboard-tag.warehouse {
+            background: #ffedd5;
+            color: #c2410c;
+        }
+
+        .dashboard-empty {
+            color: #6b7280;
+            text-align: center;
+            padding: 18px 12px;
         }
 
         @media (max-width: 1100px) {
@@ -229,6 +258,12 @@
                 grid-template-columns: 1fr;
             }
 
+            .dashboard-cards {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
             .dashboard-cards {
                 grid-template-columns: 1fr;
             }
@@ -241,14 +276,14 @@
 
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+                <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
                 <p>Sistema de Inventário</p>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span> Ferramentaria</a>
                 <a href="dashboard.html" class="ativo"><span class="sidebar-icon">🏠</span> Painel</a>
-                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
                 <a href="almoxarifado.html"><span class="sidebar-icon">📋</span> Almoxarifado</a>
                 <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
                 <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
@@ -257,9 +292,9 @@
                 <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
                 <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
                 <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
-                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+                <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
                 <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
-      </nav>
+            </nav>
 
             <div class="sidebar-footer">
                 <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
@@ -269,60 +304,71 @@
         <main class="main-content">
             <header class="page-header dashboard-header">
                 <h2>Painel</h2>
-                <p>Resumo geral do inventário</p>
+                <p>Acompanhe Ferramentaria e Almoxarifado em um só painel.</p>
             </header>
 
             <div class="container">
-                <div class="dashboard-toolbar">
-                    <a class="btn-atalho" href="ferramentaria.html">🧰 Ferramentaria</a>
-                    <a class="btn-atalho primario" href="cadastro-ferramenta.html">➕ Cadastrar</a>
-                    <a class="btn-atalho" href="cadastro-ferramenta.html">📥 Importar</a>
-                    <a class="btn-atalho" href="almoxarifado.html">📋 Almoxarifado</a>
-                    <a class="btn-atalho" href="index.html">🏷️ Imprimir lote</a>
-                </div>
-
                 <div id="dashboardAlertas" class="dashboard-alertas"></div>
 
                 <section class="dashboard-overview">
                     <div class="dashboard-cards">
                         <div class="card-resumo">
-                            <div id="totalItens" class="numero">0</div>
-                            <p>Total de itens</p>
-                            <div class="card-meta">Atualizado em tempo real</div>
+                            <div id="totalItensFerramentaria" class="numero">0</div>
+                            <p>Itens da Ferramentaria</p>
+                            <div class="card-meta">Ferramentas cadastradas</div>
                         </div>
 
-                        <div class="card-resumo filtravel" id="cardEstoqueStatus" title="Filtrar itens por status do estoque">
-                            <div id="totalEstoque" class="numero">0</div>
-                            <p>Estoque total</p>
-                            <div id="statusSemaforo" class="status-semaforo ok">Status geral: OK</div>
+                        <div class="card-resumo">
+                            <div id="totalEstoqueFerramentaria" class="numero">0</div>
+                            <p>Estoque Ferramentaria</p>
+                            <div class="card-meta">Quantidade disponível na Ferramentaria</div>
+                        </div>
+
+                        <div class="card-resumo">
+                            <div id="totalItensAlmox" class="numero">0</div>
+                            <p>Materiais do Almoxarifado</p>
+                            <div class="card-meta">Materiais cadastrados</div>
+                        </div>
+
+                        <div class="card-resumo">
+                            <div id="totalEstoqueAlmox" class="numero">0</div>
+                            <p>Estoque Almoxarifado</p>
+                            <div class="card-meta">Quantidade disponível no Almoxarifado</div>
+                        </div>
+
+                        <div class="card-resumo filtravel" id="cardEstoqueStatus" title="Filtrar itens pelo status dos dois módulos">
+                            <div id="totalItensConsolidados" class="numero">0</div>
+                            <p>Total dos módulos</p>
+                            <div id="statusSemaforo" class="status-semaforo ok">Status dos módulos: OK</div>
                         </div>
 
                         <div class="card-resumo">
                             <div id="totalCategorias" class="numero">0</div>
-                            <p>Categorias</p>
-                            <div class="card-meta">Top categorias ao lado</div>
+                            <p>Categorias dos módulos</p>
+                            <div class="card-meta">Categorias com mais itens</div>
                         </div>
                     </div>
 
                     <aside class="dashboard-grafico">
-                        <h3>Top 5 categorias</h3>
+                        <h3>Categorias com mais itens</h3>
                         <div id="graficoCategorias" class="grafico-lista"></div>
                     </aside>
                 </section>
 
                 <section class="painel-lista">
-          <h2>Itens cadastrados</h2>
+                    <h2>Itens da operação</h2>
                     <div class="painel-tabela-head">
-                        <input type="text" id="buscaPainel" placeholder="Buscar por código, ferramenta, categoria...">
-                        <span id="painelResumoTabela">0 itens carregados</span>
+                        <input type="text" id="buscaPainel" placeholder="Buscar por código, item, categoria, módulo ou localização..." />
+                        <span id="painelResumoTabela">Nenhum item carregado</span>
                     </div>
 
                     <div class="tabela-wrap dashboard-table">
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Módulo</th>
                                     <th>Código</th>
-                                    <th>Ferramenta</th>
+                                    <th>Item</th>
                                     <th>Categoria</th>
                                     <th>Marca / Modelo</th>
                                     <th>Localização</th>
@@ -335,18 +381,82 @@
                 </section>
             </div>
         </main>
-
     </div>
 
     <script>
         let itensCache = [];
         let filtroStatusAtivo = "todos";
 
+        function getJson(url) {
+            return fetch(url, { credentials: "same-origin" })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        const err = new Error(data.error || "Erro");
+                        err.status = res.status;
+                        throw err;
+                    }
+                    return data;
+                });
+        }
+
+        function redirecionarErro(err) {
+            if (err?.status === 401) {
+                window.location.href = "/login.html";
+                return true;
+            }
+            if (err?.status === 403) {
+                window.location.href = "/acesso-negado.html";
+                return true;
+            }
+            return false;
+        }
+
+        function toNumber(value) {
+            const number = Number(value || 0);
+            return Number.isFinite(number) ? number : 0;
+        }
+
+        function formatarNumero(value) {
+            const number = toNumber(value);
+            return Number.isInteger(number) ? String(number) : number.toFixed(2);
+        }
+
         function calcularStatus(item) {
-            const estoque = Number(item.estoque_atual ?? item.quantidade_total ?? 0);
+            const estoque = toNumber(item.estoque_atual ?? item.quantidade_total);
             if (estoque <= 0) return "zerado";
             if (estoque <= 2) return "baixo";
             return "ok";
+        }
+
+        function enriquecerItens(lista, modulo) {
+            return (Array.isArray(lista) ? lista : []).map((item) => ({
+                ...item,
+                modulo
+            }));
+        }
+
+        function atualizarCards(itensFerramentaria, itensAlmox, itensConsolidados) {
+            const estoqueFerramentaria = itensFerramentaria.reduce((total, item) => {
+                return total + toNumber(item.estoque_atual ?? item.quantidade_total);
+            }, 0);
+
+            const estoqueAlmox = itensAlmox.reduce((total, item) => {
+                return total + toNumber(item.estoque_atual ?? item.quantidade_total);
+            }, 0);
+
+            const categoriasUnicas = new Set(
+                itensConsolidados
+                    .map((item) => String(item.categoria || "").trim())
+                    .filter(Boolean)
+            );
+
+            document.getElementById("totalItensFerramentaria").textContent = String(itensFerramentaria.length);
+            document.getElementById("totalEstoqueFerramentaria").textContent = formatarNumero(estoqueFerramentaria);
+            document.getElementById("totalItensAlmox").textContent = String(itensAlmox.length);
+            document.getElementById("totalEstoqueAlmox").textContent = formatarNumero(estoqueAlmox);
+            document.getElementById("totalItensConsolidados").textContent = String(itensConsolidados.length);
+            document.getElementById("totalCategorias").textContent = String(categoriasUnicas.size);
         }
 
         function atualizarAlertas(itens) {
@@ -356,14 +466,15 @@
             const ok = itens.filter((item) => calcularStatus(item) === "ok").length;
 
             host.innerHTML = `
-                <button type="button" class="dashboard-alerta risco" data-filtro-status="zerado">⛔ ${zerados} itens zerados</button>
-                <button type="button" class="dashboard-alerta alerta" data-filtro-status="baixo">⚠️ ${baixos} itens com estoque baixo</button>
-                <button type="button" class="dashboard-alerta ok" data-filtro-status="ok">✅ ${ok} itens com estoque OK</button>
-                <button type="button" class="dashboard-alerta" data-filtro-status="todos" style="background:#e5e7eb;color:#1f2937;">🔄 Ver todos</button>
+                <button type="button" class="dashboard-alerta risco" data-filtro-status="zerado">${zerados} itens zerados</button>
+                <button type="button" class="dashboard-alerta alerta" data-filtro-status="baixo">${baixos} itens com estoque baixo</button>
+                <button type="button" class="dashboard-alerta ok" data-filtro-status="ok">${ok} itens com estoque OK</button>
+                <button type="button" class="dashboard-alerta" data-filtro-status="todos" style="background:#e5e7eb;color:#1f2937;">Ver todos</button>
             `;
-            host.querySelectorAll("[data-filtro-status]").forEach((btn) => {
-                btn.addEventListener("click", () => {
-                    aplicarFiltroStatus(btn.dataset.filtroStatus || "todos");
+
+            host.querySelectorAll("[data-filtro-status]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    aplicarFiltroStatus(button.dataset.filtroStatus || "todos");
                 });
             });
 
@@ -371,22 +482,22 @@
             semaforo.className = "status-semaforo";
             if (zerados > 0) {
                 semaforo.classList.add("risco");
-                semaforo.textContent = "Status geral: Risco";
+                semaforo.textContent = "Status dos módulos: Risco";
             } else if (baixos > 0) {
                 semaforo.classList.add("alerta");
-                semaforo.textContent = "Status geral: Atenção";
+                semaforo.textContent = "Status dos módulos: Atenção";
             } else {
                 semaforo.classList.add("ok");
-                semaforo.textContent = "Status geral: OK";
+                semaforo.textContent = "Status dos módulos: OK";
             }
 
             atualizarEstadoVisualFiltro();
         }
 
         function atualizarEstadoVisualFiltro() {
-            document.querySelectorAll("[data-filtro-status]").forEach((el) => {
-                const ativo = (el.dataset.filtroStatus || "todos") === filtroStatusAtivo;
-                el.classList.toggle("ativo", ativo);
+            document.querySelectorAll("[data-filtro-status]").forEach((element) => {
+                const ativo = (element.dataset.filtroStatus || "todos") === filtroStatusAtivo;
+                element.classList.toggle("ativo", ativo);
             });
         }
 
@@ -395,8 +506,8 @@
             const mapa = new Map();
 
             itens.forEach((item) => {
-                const cat = (item.categoria || "Sem categoria").trim() || "Sem categoria";
-                mapa.set(cat, (mapa.get(cat) || 0) + 1);
+                const categoria = String(item.categoria || "Sem categoria").trim() || "Sem categoria";
+                mapa.set(categoria, (mapa.get(categoria) || 0) + 1);
             });
 
             const top = Array.from(mapa.entries())
@@ -413,7 +524,7 @@
                         <strong>${valor}</strong>
                     </div>
                 `;
-            }).join("") || "<span class='texto-ajuda'>Sem dados para exibir.</span>";
+            }).join("") || "<span class='texto-ajuda'>Ainda não há dados para exibir.</span>";
         }
 
         function renderTabela(itens) {
@@ -421,21 +532,39 @@
             const resumo = document.getElementById("painelResumoTabela");
             tabela.innerHTML = "";
 
+            if (!itens.length) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="dashboard-empty">Nenhum item encontrado com o filtro atual.</td>
+                    </tr>
+                `;
+                resumo.textContent = "Nenhum item para exibir";
+                return;
+            }
+
+            const ferramentaria = itens.filter((item) => item.modulo === "Ferramentaria").length;
+            const almoxarifado = itens.filter((item) => item.modulo === "Almoxarifado").length;
+
             itens.forEach((item) => {
-                const estoque = Number(item.estoque_atual ?? item.quantidade_total ?? 0);
+                const estoque = formatarNumero(item.estoque_atual ?? item.quantidade_total);
+                const tagClass = item.modulo === "Almoxarifado" ? "warehouse" : "tools";
+                const itemNome = item.ferramenta || "";
                 const tr = document.createElement("tr");
+
                 tr.innerHTML = `
+                    <td><span class="dashboard-tag ${tagClass}">${item.modulo}</span></td>
                     <td>${item.codigo || ""}</td>
-                    <td title="${item.ferramenta || ""}">${item.ferramenta || ""}</td>
+                    <td title="${itemNome}">${itemNome}</td>
                     <td>${item.categoria || ""}</td>
                     <td title="${item.marca_modelo || ""}">${item.marca_modelo || ""}</td>
                     <td title="${item.localizacao || ""}">${item.localizacao || ""}</td>
                     <td class="col-estoque">${estoque}</td>
                 `;
+
                 tabela.appendChild(tr);
             });
 
-            resumo.textContent = `${itens.length} itens carregados`;
+            resumo.textContent = `Exibindo ${itens.length} itens: ${ferramentaria} da Ferramentaria e ${almoxarifado} do Almoxarifado`;
         }
 
         function filtrarPorStatus(lista) {
@@ -450,6 +579,7 @@
                 ? base
                 : base.filter((item) => {
                     const alvo = [
+                        item.modulo,
                         item.codigo,
                         item.ferramenta,
                         item.categoria,
@@ -458,6 +588,7 @@
                     ].join(" ").toLowerCase();
                     return alvo.includes(termo);
                 });
+
             renderTabela(filtrados);
         }
 
@@ -469,52 +600,43 @@
 
         async function carregarDashboard() {
             try {
-                const resposta = await fetch("/api/itens");
-                const itens = await resposta.json();
-                const totalItens = document.getElementById("totalItens");
-                const totalEstoque = document.getElementById("totalEstoque");
-                const totalCategorias = document.getElementById("totalCategorias");
-                itensCache = Array.isArray(itens) ? itens : [];
+                const [itensFerramentariaRaw, itensAlmoxRaw] = await Promise.all([
+                    getJson("/api/itens"),
+                    getJson("/api/almoxarifado/itens")
+                ]);
 
-                totalItens.textContent = itens.length;
+                const itensFerramentaria = enriquecerItens(itensFerramentariaRaw, "Ferramentaria");
+                const itensAlmox = enriquecerItens(itensAlmoxRaw, "Almoxarifado");
+                itensCache = [...itensFerramentaria, ...itensAlmox];
 
-                const somaEstoque = itens.reduce((acc, item) => {
-                    return acc + Number(item.estoque_atual || item.quantidade_total || 0);
-                }, 0);
-
-                totalEstoque.textContent = somaEstoque;
-
-                const categoriasUnicas = new Set(
-                    itens
-                        .map(item => (item.categoria || "").trim())
-                        .filter(categoria => categoria !== "")
-                );
-
-                totalCategorias.textContent = categoriasUnicas.size;
+                atualizarCards(itensFerramentaria, itensAlmox, itensCache);
                 atualizarAlertas(itensCache);
                 renderGraficoCategorias(itensCache);
-                renderTabela(itensCache);
-
+                aplicarBusca();
             } catch (erro) {
+                if (redirecionarErro(erro)) return;
                 console.error("Erro ao carregar dashboard:", erro);
+                document.getElementById("painelResumoTabela").textContent = erro.message || "Não foi possível carregar o painel.";
+                document.getElementById("tabelaItens").innerHTML = `
+                    <tr>
+                        <td colspan="7" class="dashboard-empty">Não foi possível carregar o painel agora.</td>
+                    </tr>
+                `;
             }
         }
 
         document.getElementById("buscaPainel").addEventListener("input", aplicarBusca);
         document.getElementById("cardEstoqueStatus").addEventListener("click", () => {
-            const proximo = filtroStatusAtivo === "todos" ? "baixo" : (filtroStatusAtivo === "baixo" ? "zerado" : (filtroStatusAtivo === "zerado" ? "ok" : "todos"));
+            const proximo = filtroStatusAtivo === "todos"
+                ? "baixo"
+                : (filtroStatusAtivo === "baixo"
+                    ? "zerado"
+                    : (filtroStatusAtivo === "zerado" ? "ok" : "todos"));
             aplicarFiltroStatus(proximo);
         });
+
         carregarDashboard();
     </script>
 </body>
 
 </html>
-
-
-
-
-
-
-
-

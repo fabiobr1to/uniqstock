@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Balcão do Almoxarifado | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo">
+        <p>Sistema de Inventário</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Inventário do Almoxarifado</span></a>
+        <a href="balcao-almoxarifado.html" class="ativo"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Balcão do Almoxarifado</span></a>
+        <a href="cadastro-almoxarifado.html"><span class="sidebar-icon">➕</span><span class="sidebar-link-label">Cadastrar material</span></a>
+        <a href="etiquetas.html?module=almoxarifado"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html?module=almoxarifado"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes-almoxarifado.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Histórico do Almoxarifado</span></a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span><span class="sidebar-link-label">Auditoria</span></a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span><span class="sidebar-link-label">Configurações</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span><span class="sidebar-link-label">Sair</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Balcão do Almoxarifado</span>
+          <h2>Almoxarifado</h2>
+          <p>Entrada e saída de materiais com foco no controle operacional do Almoxarifado.</p>
+        </div>
+      </header>
+
+      <div class="container">
+        <section class="painel-form inventory-panel">
+          <div class="warehouse-toolbar">
+            <div>
+              <span class="warehouse-badge">Localização fixa: Almoxarifado</span>
+            </div>
+          </div>
+
+          <div class="warehouse-cards">
+            <div class="warehouse-card">
+              <span>Materiais</span>
+              <strong id="almoxTotalItens">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Estoque total</span>
+              <strong id="almoxTotalEstoque">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Saídas hoje</span>
+              <strong id="almoxSaidasHoje">0</strong>
+            </div>
+            <div class="warehouse-card">
+              <span>Entradas hoje</span>
+              <strong id="almoxEntradasHoje">0</strong>
+            </div>
+          </div>
+
+          <div class="tool-grid ferramentaria-grid">
+            <section class="tool-panel">
+              <span class="inventory-kicker">Operação</span>
+              <h2>Entrada / Saída</h2>
+              <p class="tool-panel-copy">Selecione um material do Almoxarifado e registre a entrada de reposição ou a saída para consumo, obra ou frente de trabalho.</p>
+
+              <div class="tool-form-compact">
+                <div class="form-group">
+                  <label for="almoxBuscaCodigo">Código ou material</label>
+                  <input id="almoxBuscaCodigo" type="text" list="almoxSugestoes" placeholder="Ex.: ALM-0001 ou nome do material" autocomplete="off">
+                  <datalist id="almoxSugestoes"></datalist>
+                </div>
+
+                <div id="almoxCardItem" class="ferramentaria-item-card is-empty">
+                  <strong>Nenhum material selecionado</strong>
+                  <p>Escolha um item do Almoxarifado para liberar os botões de entrada e saída.</p>
+                </div>
+
+                <div class="tool-form">
+                  <div class="form-group">
+                    <label for="almoxQuantidade">Quantidade</label>
+                    <input id="almoxQuantidade" type="number" min="1" step="1" value="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="almoxResponsavel">Responsável</label>
+                    <input id="almoxResponsavel" type="text" autocomplete="off" placeholder="Quem registrou ou retirou o material">
+                  </div>
+                  <div class="form-group">
+                    <label for="almoxObra">Obra / destino</label>
+                    <input id="almoxObra" type="text" autocomplete="off" placeholder="Destino do material">
+                  </div>
+                  <div class="form-group">
+                    <label for="almoxObservacao">Observação</label>
+                    <input id="almoxObservacao" type="text" autocomplete="off" placeholder="Ex.: reposição de estoque, consumo em manutenção, uso emergencial">
+                  </div>
+                </div>
+
+                <div class="tool-actions">
+                  <button id="btnSaidaMaterial" type="button" class="tool-primary-btn">Registrar saída</button>
+                  <button id="btnEntradaMaterial" type="button" class="tool-secondary-action">Registrar entrada</button>
+                </div>
+
+                <p id="almoxStatus" class="tool-status"></p>
+              </div>
+            </section>
+
+            <section class="tool-panel tool-panel-secondary">
+              <span class="inventory-kicker">Consulta rápida</span>
+              <h2>Materiais do Almoxarifado</h2>
+              <p class="tool-panel-copy">Use a busca para localizar materiais já vinculados ao Almoxarifado e acompanhar o saldo disponível.</p>
+
+              <div class="inventory-search-block">
+                <label class="inventory-label" for="almoxFiltroLista">Buscar no Almoxarifado</label>
+                <input id="almoxFiltroLista" class="inventory-search" type="text" placeholder="Buscar por código, material, categoria ou especificação">
+              </div>
+
+              <div class="inventory-meta">
+                <p id="almoxResumoLista" class="inventory-summary">Carregando materiais do Almoxarifado...</p>
+                <span class="inventory-hint">Lista exibida somente para itens com localização Almoxarifado.</span>
+              </div>
+
+              <div class="tabela-wrap">
+                <table class="tabela-inventario compacto">
+                  <thead>
+                    <tr>
+                      <th class="col-codigo">Código</th>
+                      <th class="col-ferramenta">Material</th>
+                      <th class="col-categoria">Categoria</th>
+                      <th class="col-marca">Especificação</th>
+                      <th class="col-num">Estoque</th>
+                      <th class="col-categoria">Unid.</th>
+                      <th class="col-acao">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="almoxTabelaItens"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="painel-lista ferramentaria-historico">
+            <div class="painel-tabela-head">
+              <h2>Últimas operações do Almoxarifado</h2>
+              <span id="almoxResumoMov" class="inventory-summary">Carregando movimentações do Almoxarifado...</span>
+            </div>
+
+            <div class="tabela-wrap">
+              <table class="tabela-mov">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Código</th>
+                    <th>Material</th>
+                    <th>Operação</th>
+                    <th>Quantidade</th>
+                    <th>Responsável</th>
+                    <th>Obra</th>
+                    <th>Observação</th>
+                  </tr>
+                </thead>
+                <tbody id="almoxTabelaMov"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let itensAlmox = [];
+    let movimentosAlmox = [];
+    let materialSelecionado = null;
+
+    async function getJson(url, options = {}) {
+      const res = await fetch(url, { credentials: "same-origin", ...options });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    function redirecionarErro(err) {
+      if (err?.status === 401) {
+        window.location.href = "/login.html";
+        return true;
+      }
+      if (err?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+        return true;
+      }
+      return false;
+    }
+
+    function formatarNumero(valor) {
+      const numero = Number(valor || 0);
+      return Number.isInteger(numero) ? String(numero) : numero.toFixed(2);
+    }
+
+    function escapeHtml(valor) {
+      return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function preencherSugestoes() {
+      const lista = document.getElementById("almoxSugestoes");
+      lista.innerHTML = "";
+      itensAlmox.forEach((item) => {
+        const optionCodigo = document.createElement("option");
+        optionCodigo.value = item.codigo || "";
+        optionCodigo.label = `${item.codigo || ""} - ${item.ferramenta || ""}`;
+        lista.appendChild(optionCodigo);
+
+        const optionMaterial = document.createElement("option");
+        optionMaterial.value = item.ferramenta || "";
+        optionMaterial.label = item.codigo || "";
+        lista.appendChild(optionMaterial);
+      });
+    }
+
+    function atualizarCards() {
+      const totalEstoque = itensAlmox.reduce((total, item) => total + Number(item.estoque_atual ?? item.quantidade_total ?? 0), 0);
+      const hoje = new Date().toISOString().slice(0, 10);
+      const saidasHoje = movimentosAlmox.filter((mov) => String(mov.data || "").slice(0, 10) === hoje && String(mov.tipo || "").toUpperCase() === "SAIDA").length;
+      const entradasHoje = movimentosAlmox.filter((mov) => String(mov.data || "").slice(0, 10) === hoje && String(mov.tipo || "").toUpperCase() === "ENTRADA").length;
+
+      document.getElementById("almoxTotalItens").textContent = String(itensAlmox.length);
+      document.getElementById("almoxTotalEstoque").textContent = formatarNumero(totalEstoque);
+      document.getElementById("almoxSaidasHoje").textContent = String(saidasHoje);
+      document.getElementById("almoxEntradasHoje").textContent = String(entradasHoje);
+    }
+
+    function atualizarMaterialSelecionado() {
+      const card = document.getElementById("almoxCardItem");
+      const btnSaida = document.getElementById("btnSaidaMaterial");
+      const btnEntrada = document.getElementById("btnEntradaMaterial");
+
+      if (!materialSelecionado) {
+        card.className = "ferramentaria-item-card is-empty";
+        card.innerHTML = "<strong>Nenhum material selecionado</strong><p>Escolha um item do Almoxarifado para liberar os botões de entrada e saída.</p>";
+        btnSaida.disabled = true;
+        btnEntrada.disabled = true;
+        return;
+      }
+
+      card.className = "ferramentaria-item-card";
+      card.innerHTML = `
+        <strong>${escapeHtml(materialSelecionado.codigo || "")} - ${escapeHtml(materialSelecionado.ferramenta || "")}</strong>
+        <p>Categoria: ${escapeHtml(materialSelecionado.categoria || "-")} | Especificação: ${escapeHtml(materialSelecionado.marca_modelo || "-")}</p>
+        <p>Estoque disponível: ${escapeHtml(formatarNumero(materialSelecionado.estoque_atual ?? materialSelecionado.quantidade_total ?? 0))} | Localização: ${escapeHtml(materialSelecionado.localizacao || "-")}</p>
+      `;
+      btnSaida.disabled = false;
+      btnEntrada.disabled = false;
+    }
+
+    function selecionarMaterialPorTermo(termo) {
+      const busca = String(termo || "").trim().toLowerCase();
+      materialSelecionado = itensAlmox.find((item) => String(item.codigo || "").trim().toLowerCase() === busca)
+        || itensAlmox.find((item) => String(item.ferramenta || "").trim().toLowerCase() === busca)
+        || itensAlmox.find((item) => `${item.codigo || ""} ${item.ferramenta || ""}`.toLowerCase().includes(busca))
+        || null;
+      atualizarMaterialSelecionado();
+    }
+
+    function renderTabela(lista) {
+      const tbody = document.getElementById("almoxTabelaItens");
+      const resumo = document.getElementById("almoxResumoLista");
+      tbody.innerHTML = "";
+
+      lista.forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="col-codigo">${escapeHtml(item.codigo || "")}</td>
+          <td class="col-ferramenta" title="${escapeHtml(item.ferramenta || "")}">${escapeHtml(item.ferramenta || "")}</td>
+          <td class="col-categoria">${escapeHtml(item.categoria || "")}</td>
+          <td class="col-marca" title="${escapeHtml(item.marca_modelo || "")}">${escapeHtml(item.marca_modelo || "")}</td>
+          <td class="col-num">${formatarNumero(item.estoque_atual ?? item.quantidade_total ?? 0)}</td>
+          <td>${escapeHtml(item.unidade_medida || "un")}</td>
+          <td class="col-acao">
+            <button type="button" class="btn-secondary btn-editar-item">Selecionar</button>
+          </td>
+        `;
+        tr.querySelector(".btn-editar-item").addEventListener("click", () => {
+          materialSelecionado = item;
+          document.getElementById("almoxBuscaCodigo").value = item.codigo || item.ferramenta || "";
+          atualizarMaterialSelecionado();
+        });
+        tbody.appendChild(tr);
+      });
+
+      resumo.textContent = lista.length === 1 ? "1 material exibido" : `${lista.length} materiais exibidos`;
+      if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);">Nenhum material encontrado com os filtros atuais.</td></tr>`;
+      }
+    }
+
+    function renderTabelaMovimentos() {
+      const tbody = document.getElementById("almoxTabelaMov");
+      const resumo = document.getElementById("almoxResumoMov");
+      tbody.innerHTML = "";
+      resumo.textContent = movimentosAlmox.length === 1
+        ? "1 movimentação recente no Almoxarifado"
+        : `${movimentosAlmox.length} movimentações recentes no Almoxarifado`;
+
+      if (!movimentosAlmox.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma movimentação registrada até o momento.</td></tr>';
+        return;
+      }
+
+      movimentosAlmox.slice(0, 30).forEach((mov) => {
+        const tr = document.createElement("tr");
+        const data = mov.data ? new Date(mov.data).toLocaleString("pt-BR") : "-";
+        const tipo = String(mov.tipo || "").toUpperCase() === "ENTRADA" ? "Entrada" : "Saída";
+        tr.innerHTML = `
+          <td>${escapeHtml(data)}</td>
+          <td>${escapeHtml(mov.codigo || "")}</td>
+          <td>${escapeHtml(mov.ferramenta || "")}</td>
+          <td>${escapeHtml(tipo)}</td>
+          <td>${escapeHtml(formatarNumero(mov.quantidade || 0))}</td>
+          <td>${escapeHtml(mov.funcionario || "-")}</td>
+          <td>${escapeHtml(mov.obra || "-")}</td>
+          <td>${escapeHtml(mov.observacao || "-")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function aplicarBuscaLista() {
+      const termo = String(document.getElementById("almoxFiltroLista").value || "").trim().toLowerCase();
+      const lista = !termo
+        ? itensAlmox
+        : itensAlmox.filter((item) => [item.codigo, item.ferramenta, item.categoria, item.marca_modelo, item.localizacao]
+          .join(" ")
+          .toLowerCase()
+          .includes(termo));
+      renderTabela(lista);
+    }
+
+    async function registrarMovimentacao(tipo) {
+      if (!materialSelecionado) return;
+
+      const quantidade = Number(document.getElementById("almoxQuantidade").value || 0);
+      const funcionario = document.getElementById("almoxResponsavel").value;
+      const obra = document.getElementById("almoxObra").value;
+      const observacao = document.getElementById("almoxObservacao").value;
+      const status = document.getElementById("almoxStatus");
+      const tipoTexto = tipo === "ENTRADA" ? "entrada" : "saída";
+
+      status.textContent = `Registrando ${tipoTexto}...`;
+
+      try {
+        await getJson("/api/almoxarifado/movimentacoes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            item_id: materialSelecionado.id,
+            tipo,
+            quantidade,
+            funcionario,
+            obra,
+            observacao
+          })
+        });
+
+        status.textContent = tipo === "ENTRADA"
+          ? "Entrada de material registrada com sucesso."
+          : "Saída de material registrada com sucesso.";
+        document.getElementById("almoxQuantidade").value = "1";
+        document.getElementById("almoxResponsavel").value = "";
+        document.getElementById("almoxObra").value = "";
+        document.getElementById("almoxObservacao").value = "";
+
+        const itemIdAtual = materialSelecionado?.id;
+        await carregarPagina();
+        if (itemIdAtual) {
+          materialSelecionado = itensAlmox.find((item) => Number(item.id) === Number(itemIdAtual)) || null;
+          if (materialSelecionado?.codigo) {
+            document.getElementById("almoxBuscaCodigo").value = materialSelecionado.codigo;
+          }
+          atualizarMaterialSelecionado();
+        }
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          status.textContent = err.message || `Não foi possível registrar a ${tipoTexto}.`;
+        }
+      }
+    }
+
+    async function carregarPagina() {
+      try {
+        const [itens, movimentacoes] = await Promise.all([
+          getJson("/api/almoxarifado/itens"),
+          getJson("/api/almoxarifado/movimentacoes")
+        ]);
+
+        itensAlmox = Array.isArray(itens) ? itens : [];
+        movimentosAlmox = Array.isArray(movimentacoes) ? movimentacoes : [];
+
+        preencherSugestoes();
+        atualizarCards();
+        aplicarBuscaLista();
+        renderTabelaMovimentos();
+
+        if (materialSelecionado?.id) {
+          materialSelecionado = itensAlmox.find((item) => Number(item.id) === Number(materialSelecionado.id)) || null;
+        }
+        atualizarMaterialSelecionado();
+      } catch (err) {
+        if (!redirecionarErro(err)) {
+          document.getElementById("almoxResumoLista").textContent = err.message || "Não foi possível carregar os materiais.";
+          document.getElementById("almoxResumoMov").textContent = "Não foi possível carregar as movimentações.";
+        }
+      }
+    }
+
+    document.getElementById("almoxFiltroLista").addEventListener("input", aplicarBuscaLista);
+    document.getElementById("almoxBuscaCodigo").addEventListener("change", (event) => {
+      selecionarMaterialPorTermo(event.target.value);
+    });
+    document.getElementById("almoxBuscaCodigo").addEventListener("input", (event) => {
+      if (!event.target.value.trim()) {
+        materialSelecionado = null;
+        atualizarMaterialSelecionado();
+      }
+    });
+    document.getElementById("btnSaidaMaterial").addEventListener("click", () => registrarMovimentacao("SAIDA"));
+    document.getElementById("btnEntradaMaterial").addEventListener("click", () => registrarMovimentacao("ENTRADA"));
+
+    carregarPagina();
+  </script>
+</body>
+</html>

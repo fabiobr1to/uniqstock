@@ -15,7 +15,17 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 const { createDatabase } = require("./lib/database");
+const { createPersistentSessionStore } = require("./lib/session-store");
 const { initDatabaseSchema } = require("./lib/schema");
+const {
+  clearBootstrapAdminArtifacts,
+  detectProductionInstall,
+  ensureRuntimeSecurity,
+  resolveBootstrapAdminPassword,
+  resolveLicenseRuntime,
+  validateStrongPassword,
+  writeBootstrapCredentialsFile
+} = require("./lib/runtime-security");
 const packageJson = require("./package.json");
 
 const app = express();
@@ -35,17 +45,49 @@ if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
+const PRODUCTION_INSTALL = detectProductionInstall(process.env);
+const RUNTIME_SECURITY = ensureRuntimeSecurity({
+  runtimeBaseDir: RUNTIME_BASE_DIR,
+  env: process.env
+});
 const DB_CLIENT = String(process.env.DB_CLIENT || "sqlite").trim().toLowerCase();
 const db = createDatabase({ sqliteFile: path.join(DB_DIR, "inventario.db") });
 const upload = multer({ dest: UPLOAD_DIR });
-const LICENSE_SECRET = process.env.UNIQSTOCK_LICENSE_SECRET || "uniqstock-license-secret-change";
+const sessionMaxAgeEnv = Number(process.env.UNIQSTOCK_SESSION_MAX_AGE_MS);
+const sessionCleanupIntervalEnv = Number(process.env.UNIQSTOCK_SESSION_CLEANUP_INTERVAL_MS);
+const SESSION_MAX_AGE_MS = Number.isFinite(sessionMaxAgeEnv) && sessionMaxAgeEnv > 0
+  ? Math.max(60 * 60 * 1000, sessionMaxAgeEnv)
+  : 12 * 60 * 60 * 1000;
+const SESSION_CLEANUP_INTERVAL_MS = Number.isFinite(sessionCleanupIntervalEnv) && sessionCleanupIntervalEnv > 0
+  ? Math.max(5 * 60 * 1000, sessionCleanupIntervalEnv)
+  : 30 * 60 * 1000;
+const {
+  store: persistentSessionStore,
+  ready: persistentSessionStoreReady
+} = createPersistentSessionStore(session, db, {
+  sessionMaxAgeMs: SESSION_MAX_AGE_MS,
+  cleanupIntervalMs: SESSION_CLEANUP_INTERVAL_MS
+});
+const LICENSE_RUNTIME = resolveLicenseRuntime({
+  runtimeBaseDir: RUNTIME_BASE_DIR,
+  env: process.env,
+  productionInstall: PRODUCTION_INSTALL
+});
+const LICENSE_MODE = LICENSE_RUNTIME.mode;
+const LICENSE_SECRET = LICENSE_RUNTIME.localLicenseSecret;
 const OFFLINE_LICENSE_GRACE_DAYS = Math.max(1, Number(process.env.UNIQSTOCK_OFFLINE_GRACE_DAYS || 30));
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const FORCE_LOCAL_LICENSE = ["1", "true", "yes", "on"].includes(
-  String(process.env.UNIQSTOCK_FORCE_LOCAL_LICENSE || "").trim().toLowerCase()
-);
-const USE_SUPABASE_LICENSE = !FORCE_LOCAL_LICENSE && Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const USE_SUPABASE_LICENSE = LICENSE_RUNTIME.useSupabase;
+const UNIQSTOCK_PUBLIC_BASE_URL = String(process.env.UNIQSTOCK_PUBLIC_BASE_URL || "").trim();
+const UNIQCODE_FILES_API_TOKEN = String(process.env.UNIQCODE_FILES_API_TOKEN || "").trim();
+const UNIQCODE_FILES_API_URL = resolveUniqCodeFilesApiUrl(process.env);
+const UNIQCODE_FILES_FERRAMENTARIA_BUCKET = String(
+  process.env.UNIQCODE_FILES_FERRAMENTARIA_BUCKET || "ferramentaria-fotos"
+).trim() || "ferramentaria-fotos";
+const UNIQCODE_FILES_FERRAMENTARIA_NF_BUCKET = String(
+  process.env.UNIQCODE_FILES_FERRAMENTARIA_NF_BUCKET || "ferramentaria-notas-fiscais"
+).trim() || "ferramentaria-notas-fiscais";
 const supabase = USE_SUPABASE_LICENSE
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
@@ -54,11 +96,23 @@ const supabase = USE_SUPABASE_LICENSE
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+persistentSessionStoreReady.catch((error) => {
+  console.error("Erro ao inicializar persistência de sessão:", error.message);
+});
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "dev-secret",
+    name: "uniqstock.sid",
+    secret: RUNTIME_SECURITY.sessionSecret,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    rolling: true,
+    unset: "destroy",
+    store: persistentSessionStore,
+    cookie: {
+      maxAge: SESSION_MAX_AGE_MS,
+      sameSite: "lax",
+      httpOnly: true
+    }
   })
 );
 
@@ -92,7 +146,19 @@ function calcularDiasRestantes(dataIso) {
   return Math.floor((fim.getTime() - agora.getTime()) / (24 * 60 * 60 * 1000));
 }
 
+function regenerateSession(req) {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((error) => {
+      if (error) return reject(error);
+      resolve();
+    });
+  });
+}
+
 function assinarLicenca(payloadB64) {
+  if (!LICENSE_SECRET) {
+    throw new Error("Licenciamento local indisponível sem segredo configurado.");
+  }
   return toBase64Url(
     crypto.createHmac("sha256", LICENSE_SECRET).update(payloadB64).digest()
   );
@@ -572,6 +638,53 @@ function normalizeText(value) {
   return value ? String(value).trim() : "";
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function resolveUniqCodeFilesApiUrl(env = process.env) {
+  const explicitUrl = String(env.UNIQCODE_FILES_URL || env.UNIQCODE_FILES_API_URL || "").trim();
+  if (explicitUrl) {
+    return explicitUrl.replace(/\/+$/g, "");
+  }
+
+  const fallbackPort = Number(env.UNIQCODE_FILES_PORT || 3100);
+  const port = Number.isFinite(fallbackPort) && fallbackPort > 0 ? fallbackPort : 3100;
+  return `http://127.0.0.1:${port}`;
+}
+
+function resolveUniqStockPublicBaseUrl(req) {
+  if (UNIQSTOCK_PUBLIC_BASE_URL) {
+    return UNIQSTOCK_PUBLIC_BASE_URL.replace(/\/+$/g, "");
+  }
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+function buildPublicItemUrl(req, modulo, codigo) {
+  const baseUrl = resolveUniqStockPublicBaseUrl(req);
+  return `${baseUrl}/p/${encodeURIComponent(modulo)}/${encodeURIComponent(codigo)}`;
+}
+
+function isAlmoxarifadoLocation(value) {
+  return normalizeText(value).toLowerCase() === "almoxarifado";
+}
+
+function normalizeFerramentariaLocation(value) {
+  const localizacao = normalizeText(value);
+  if (!localizacao) return "Ferramentaria";
+  if (isAlmoxarifadoLocation(localizacao)) {
+    const error = new Error("Itens da Ferramentaria não podem usar a localização Almoxarifado. Use o módulo de Almoxarifado para materiais.");
+    error.status = 400;
+    throw error;
+  }
+  return localizacao;
+}
+
 function parseDeclaredXmlEncoding(buffer) {
   const header = Buffer.from(buffer || []).subarray(0, 512).toString("ascii");
   const match = header.match(/<\?xml[^>]*encoding=["']([^"']+)["']/i);
@@ -829,20 +942,464 @@ async function normalizarCategoriasExistentes() {
   }
 }
 
-function validarSenhaForte(senha) {
-  const texto = String(senha || "");
-  if (texto.length < 8) return "Senha deve ter ao menos 8 caracteres";
-  if (!/[A-Z]/.test(texto)) return "Senha deve conter ao menos 1 letra maiúscula";
-  if (!/[a-z]/.test(texto)) return "Senha deve conter ao menos 1 letra minúscula";
-  if (!/[0-9]/.test(texto)) return "Senha deve conter ao menos 1 número";
-  if (!/[^A-Za-z0-9]/.test(texto)) return "Senha deve conter ao menos 1 caractere especial";
-  return null;
-}
-
 function parseNumero(value) {
   const texto = String(value ?? "").trim().replace(",", ".");
   const numero = Number(texto);
   return Number.isFinite(numero) ? numero : 0;
+}
+
+async function removerArquivoTemporario(caminhoArquivo) {
+  const arquivo = normalizeText(caminhoArquivo);
+  if (!arquivo) return;
+  try {
+    await fs.promises.unlink(arquivo);
+  } catch (_) {}
+}
+
+function validarFotoFerramentaArquivo(arquivo) {
+  if (!arquivo) return;
+  const mimeType = String(arquivo.mimetype || "").trim().toLowerCase();
+  if (!mimeType.startsWith("image/")) {
+    const error = new Error("Envie uma imagem válida para a foto da ferramenta.");
+    error.status = 400;
+    throw error;
+  }
+}
+
+function validarNotaFiscalFerramentaArquivo(arquivo) {
+  if (!arquivo) return;
+  const mimeType = String(arquivo.mimetype || "").trim().toLowerCase();
+  const extensao = path.extname(String(arquivo.originalname || "")).trim().toLowerCase();
+  const extensoesPermitidas = new Set([".pdf", ".xml", ".jpg", ".jpeg", ".png", ".webp"]);
+  const mimePermitido = mimeType === "application/pdf"
+    || mimeType === "text/xml"
+    || mimeType === "application/xml"
+    || mimeType.startsWith("image/");
+
+  if (!mimePermitido && !extensoesPermitidas.has(extensao)) {
+    const error = new Error("Envie uma nota fiscal em PDF, XML ou imagem.");
+    error.status = 400;
+    throw error;
+  }
+}
+
+async function excluirArquivoDoUniqCodeFiles(fileId) {
+  const id = normalizeText(fileId);
+  if (!id || !UNIQCODE_FILES_API_TOKEN) return;
+
+  try {
+    await fetch(`${UNIQCODE_FILES_API_URL}/api/files/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: {
+        "x-ucf-token": UNIQCODE_FILES_API_TOKEN
+      }
+    });
+  } catch (_) {}
+}
+
+async function enviarArquivoParaUniqCodeFiles({
+  arquivo,
+  codigoItem,
+  bucket,
+  ownerType,
+  visibility = "public",
+  errorMessage,
+  validator
+}) {
+  if (!arquivo) return null;
+
+  if (typeof validator === "function") {
+    validator(arquivo);
+  }
+
+  if (!UNIQCODE_FILES_API_TOKEN) {
+    const error = new Error(
+      "O UniqCode Files não está configurado para receber anexos. Defina UNIQCODE_FILES_API_TOKEN antes de enviar arquivos."
+    );
+    error.status = 503;
+    throw error;
+  }
+
+  const ownerRef = normalizeText(codigoItem);
+  const originalName = normalizeText(arquivo.originalname) || `${ownerRef || "ferramenta"}.jpg`;
+  const mimeType = String(arquivo.mimetype || "application/octet-stream").trim().toLowerCase();
+  const buffer = await fs.promises.readFile(arquivo.path);
+  const form = new FormData();
+
+  form.append("bucket", normalizeText(bucket) || "general");
+  form.append("owner_type", normalizeText(ownerType) || "arquivo");
+  form.append("owner_ref", ownerRef);
+  form.append("visibility", normalizeText(visibility) || "public");
+  form.append("file", new Blob([buffer], { type: mimeType }), originalName);
+
+  let response;
+  try {
+    response = await fetch(`${UNIQCODE_FILES_API_URL}/api/files`, {
+      method: "POST",
+      headers: {
+        "x-ucf-token": UNIQCODE_FILES_API_TOKEN
+      },
+      body: form
+    });
+  } catch (_) {
+    const error = new Error(errorMessage || "Não foi possível conectar ao UniqCode Files para enviar o arquivo.");
+    error.status = 503;
+    throw error;
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.file) {
+    const error = new Error(payload?.error || errorMessage || "Não foi possível enviar o arquivo.");
+    error.status = response.status || 502;
+    throw error;
+  }
+
+  return payload.file;
+}
+
+async function enviarFotoFerramentaParaUniqCodeFiles({ arquivo, codigoItem }) {
+  return enviarArquivoParaUniqCodeFiles({
+    arquivo,
+    codigoItem,
+    bucket: UNIQCODE_FILES_FERRAMENTARIA_BUCKET,
+    ownerType: "ferramenta",
+    visibility: "public",
+    errorMessage: "Não foi possível enviar a foto da ferramenta.",
+    validator: validarFotoFerramentaArquivo
+  });
+}
+
+async function enviarNotaFiscalFerramentaParaUniqCodeFiles({ arquivo, codigoItem }) {
+  return enviarArquivoParaUniqCodeFiles({
+    arquivo,
+    codigoItem,
+    bucket: UNIQCODE_FILES_FERRAMENTARIA_NF_BUCKET,
+    ownerType: "nota_fiscal",
+    visibility: "public",
+    errorMessage: "Não foi possível enviar a nota fiscal da ferramenta.",
+    validator: validarNotaFiscalFerramentaArquivo
+  });
+}
+
+async function listarArquivosUniqCodeFilesPorReferencia(ownerRef) {
+  const referencia = normalizeText(ownerRef);
+  if (!referencia || !UNIQCODE_FILES_API_TOKEN) {
+    return { files: [], indisponivel: false };
+  }
+
+  try {
+    const url = new URL(`${UNIQCODE_FILES_API_URL}/api/files`);
+    url.searchParams.set("owner_ref", referencia);
+    url.searchParams.set("limit", "100");
+
+    const response = await fetch(url, {
+      headers: {
+        "x-ucf-token": UNIQCODE_FILES_API_TOKEN
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { files: [], indisponivel: true, erro: payload?.error || "Falha ao listar anexos." };
+    }
+
+    const files = Array.isArray(payload?.files) ? payload.files.filter((file) => file?.is_public) : [];
+    return { files, indisponivel: false };
+  } catch (_) {
+    return { files: [], indisponivel: true, erro: "Não foi possível consultar o UniqCode Files." };
+  }
+}
+
+function classificarArquivosPublicos(files = []) {
+  const anexos = Array.isArray(files) ? files : [];
+  const fotos = [];
+  const documentos = [];
+
+  anexos.forEach((file) => {
+    const bucket = String(file?.bucket || "").toLowerCase();
+    const ownerType = String(file?.owner_type || "").toLowerCase();
+    const mimeType = String(file?.mime_type || "").toLowerCase();
+    const nomeOriginal = String(file?.original_name || "");
+    const registro = {
+      ...file,
+      label: nomeOriginal || file?.id || "Arquivo"
+    };
+
+    const pareceFoto = mimeType.startsWith("image/") || bucket.includes("foto") || ownerType.includes("foto");
+    const pareceNotaFiscal = bucket.includes("nota") || ownerType.includes("nota") || /nota[\s_-]*fiscal/i.test(nomeOriginal);
+
+    if (pareceFoto) {
+      fotos.push(registro);
+      return;
+    }
+
+    documentos.push({
+      ...registro,
+      categoria: pareceNotaFiscal ? "Nota fiscal" : "Anexo"
+    });
+  });
+
+  return { fotos, documentos };
+}
+
+function renderizarFichaPublicaFerramentaria({ item, fotoPrincipalUrl, documentos, anexosIndisponiveis = false }) {
+  const documentoCards = documentos.length
+    ? documentos.map((arquivo) => `
+        <a class="public-file-card" href="${escapeHtml(arquivo.public_url)}" target="_blank" rel="noopener">
+          <span class="public-file-kind">${escapeHtml(arquivo.categoria || "Anexo")}</span>
+          <strong>${escapeHtml(arquivo.label)}</strong>
+          <span>Abrir arquivo público</span>
+        </a>
+      `).join("")
+    : `<div class="public-empty">Nenhum documento público vinculado a esta ferramenta até o momento.</div>`;
+
+  const anexosAviso = anexosIndisponiveis
+    ? `<div class="public-empty">Os anexos públicos estão temporariamente indisponíveis.</div>`
+    : "";
+
+  const fotoMarkup = fotoPrincipalUrl
+    ? `<img src="${escapeHtml(fotoPrincipalUrl)}" alt="${escapeHtml(item.ferramenta || item.codigo || "Ferramenta")}" class="public-photo">`
+    : `<div class="public-photo public-photo-empty">Foto ainda não cadastrada</div>`;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${escapeHtml(item.codigo || "Ferramenta")} | Ficha pública</title>
+      <style>
+        :root{
+          color-scheme:light;
+          --bg:#f6f7fb;
+          --panel:#ffffff;
+          --border:#dbe3ef;
+          --text:#0f172a;
+          --muted:#64748b;
+          --accent:#d40000;
+          --accent-soft:#fee2e2;
+          --shadow:0 16px 38px rgba(15,23,42,.08);
+          --radius:24px;
+        }
+        *{ box-sizing:border-box; }
+        body{
+          margin:0;
+          font-family:Arial, Helvetica, sans-serif;
+          background:linear-gradient(180deg,#f9fafc 0%, #eef2f7 100%);
+          color:var(--text);
+          padding:28px 18px 42px;
+        }
+        .wrap{
+          max-width:1080px;
+          margin:0 auto;
+          display:grid;
+          gap:20px;
+        }
+        .hero, .panel{
+          background:var(--panel);
+          border:1px solid var(--border);
+          border-radius:var(--radius);
+          box-shadow:var(--shadow);
+        }
+        .hero{
+          padding:28px;
+          display:grid;
+          grid-template-columns:minmax(0, 1.2fr) minmax(280px, .8fr);
+          gap:22px;
+          align-items:start;
+        }
+        .kicker{
+          display:inline-flex;
+          width:max-content;
+          padding:8px 12px;
+          border-radius:999px;
+          background:var(--accent-soft);
+          color:#b91c1c;
+          font-size:12px;
+          font-weight:800;
+          letter-spacing:.04em;
+          text-transform:uppercase;
+          margin-bottom:14px;
+        }
+        .brand{
+          max-width:240px;
+          width:100%;
+          height:auto;
+          display:block;
+          margin-bottom:18px;
+        }
+        h1{
+          margin:0 0 8px;
+          font-size:42px;
+          line-height:1.04;
+        }
+        .hero-code{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          padding:10px 16px;
+          border-radius:999px;
+          background:linear-gradient(90deg, rgba(0,157,220,.12) 0%, rgba(140,198,63,.16) 100%);
+          border:1px solid rgba(18,50,79,.16);
+          font-size:24px;
+          font-weight:800;
+          color:#12324f;
+          margin:0 0 18px;
+        }
+        .hero-copy{
+          color:var(--muted);
+          font-size:17px;
+          line-height:1.6;
+          margin:0;
+        }
+        .public-photo{
+          width:100%;
+          min-height:320px;
+          max-height:420px;
+          object-fit:cover;
+          border-radius:20px;
+          border:1px solid var(--border);
+          background:#f8fafc;
+          display:block;
+        }
+        .public-photo-empty{
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:28px;
+          color:var(--muted);
+          font-weight:700;
+        }
+        .panel{
+          padding:22px;
+        }
+        .panel h2{
+          margin:0 0 14px;
+          font-size:28px;
+        }
+        .facts{
+          display:grid;
+          grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+          gap:14px;
+        }
+        .fact{
+          border:1px solid var(--border);
+          border-radius:18px;
+          padding:16px;
+          background:#f8fafc;
+        }
+        .fact span{
+          display:block;
+          color:var(--muted);
+          font-size:12px;
+          font-weight:800;
+          text-transform:uppercase;
+          letter-spacing:.04em;
+          margin-bottom:8px;
+        }
+        .fact strong{
+          display:block;
+          font-size:19px;
+          line-height:1.35;
+        }
+        .public-files{
+          display:grid;
+          grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+          gap:14px;
+        }
+        .public-file-card{
+          display:grid;
+          gap:8px;
+          padding:16px;
+          text-decoration:none;
+          color:inherit;
+          border:1px solid var(--border);
+          border-radius:18px;
+          background:#fff;
+          transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+        }
+        .public-file-card:hover{
+          transform:translateY(-2px);
+          border-color:#c5d2e5;
+          box-shadow:0 10px 22px rgba(15,23,42,.08);
+        }
+        .public-file-kind{
+          color:#1d4ed8;
+          font-size:12px;
+          font-weight:800;
+          text-transform:uppercase;
+          letter-spacing:.04em;
+        }
+        .public-file-card strong{
+          font-size:18px;
+        }
+        .public-file-card span:last-child{
+          color:var(--muted);
+          font-size:13px;
+        }
+        .public-empty{
+          padding:18px;
+          border:1px dashed #cbd5e1;
+          border-radius:18px;
+          color:var(--muted);
+          background:#f8fafc;
+        }
+        @media (max-width: 860px){
+          .hero{
+            grid-template-columns:1fr;
+          }
+          h1{
+            font-size:34px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <main class="wrap">
+        <section class="hero">
+          <div>
+            <span class="kicker">Ficha pública da Ferramentaria</span>
+            <img src="/img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand">
+            <p class="hero-code">${escapeHtml(item.codigo || "-")}</p>
+            <h1>${escapeHtml(item.ferramenta || "Ferramenta")}</h1>
+            <p class="hero-copy">Consulta pública da ferramenta da PRZ. Aqui você pode visualizar a foto vinculada e os documentos públicos disponíveis, como nota fiscal e anexos relacionados.</p>
+          </div>
+          <div>${fotoMarkup}</div>
+        </section>
+
+        <section class="panel">
+          <h2>Dados principais</h2>
+          <div class="facts">
+            <div class="fact">
+              <span>Categoria</span>
+              <strong>${escapeHtml(item.categoria || "-")}</strong>
+            </div>
+            <div class="fact">
+              <span>Marca / Modelo</span>
+              <strong>${escapeHtml(item.marca_modelo || "-")}</strong>
+            </div>
+            <div class="fact">
+              <span>Localização</span>
+              <strong>${escapeHtml(item.localizacao || "-")}</strong>
+            </div>
+            <div class="fact">
+              <span>Estado inicial</span>
+              <strong>${escapeHtml(item.estado_inicial || "-")}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Documentos e anexos</h2>
+          ${anexosAviso}
+          <div class="public-files">
+            ${documentoCards}
+          </div>
+        </section>
+      </main>
+    </body>
+    </html>
+  `;
 }
 
 function parseSemver(valor) {
@@ -999,6 +1556,24 @@ async function validarCodigoDisponivelParaItem(codigoInformado, itemIdAtual = nu
 
   if (existente && Number(existente.id) !== Number(itemIdAtual)) {
     throw new Error(`O código "${codigoFinal}" já existe.`);
+  }
+
+  return codigoFinal;
+}
+
+async function validarCodigoDisponivelParaAlmoxItem(codigoInformado, itemIdAtual = null) {
+  const codigoFinal = normalizeText(codigoInformado);
+  if (!codigoFinal) {
+    throw new Error("O código do material é obrigatório");
+  }
+
+  const existente = await getQuery(
+    `SELECT id FROM almoxarifado_itens WHERE codigo = ?`,
+    [codigoFinal]
+  );
+
+  if (existente && Number(existente.id) !== Number(itemIdAtual)) {
+    throw new Error(`O código "${codigoFinal}" já existe no Almoxarifado.`);
   }
 
   return codigoFinal;
@@ -1517,6 +2092,7 @@ async function importarLinhasNoBanco(linhas) {
 
     try {
       const codigoFinal = await gerarCodigoAutomatico();
+      const localizacaoFerramentaria = normalizeFerramentariaLocation(linha.localizacao);
 
       await runQuery(
         `INSERT INTO itens (
@@ -1535,7 +2111,7 @@ async function importarLinhasNoBanco(linhas) {
           normalizeText(linha.categoria),
           normalizeText(linha.marca_modelo),
           parseNumero(linha.quantidade_total),
-          normalizeText(linha.localizacao),
+          localizacaoFerramentaria,
           normalizeText(linha.estado_inicial),
           normalizeText(linha.observacao)
         ]
@@ -1631,9 +2207,41 @@ async function importarLinhasNoAlmoxarifado(linhas) {
 }
 
 // =========================
-// CRIA??O DAS TABELAS
+// CRIAÇÃO DAS TABELAS
 // =========================
-initDatabaseSchema(db).catch((erro) => {
+let bootstrapAdminCredential = null;
+
+function obterCredencialBootstrapAdmin() {
+  if (!bootstrapAdminCredential) {
+    bootstrapAdminCredential = resolveBootstrapAdminPassword({
+      runtimeBaseDir: RUNTIME_BASE_DIR,
+      env: process.env
+    });
+  }
+
+  return bootstrapAdminCredential;
+}
+
+initDatabaseSchema(db, {
+  warnOnSkippedBootstrapAdmin: true,
+  bootstrapAdminPasswordProvider: async () => obterCredencialBootstrapAdmin().password,
+  onBootstrapAdminCreated: async ({ username }) => {
+    const credencial = obterCredencialBootstrapAdmin();
+    if (credencial.source === "runtime") {
+      const caminhoCredencial = writeBootstrapCredentialsFile({
+        runtimeBaseDir: RUNTIME_BASE_DIR,
+        username,
+        password: credencial.password,
+        installId: RUNTIME_SECURITY.installId,
+        stateFile: RUNTIME_SECURITY.paths?.securityStateFile || ""
+      });
+      console.log(`Credenciais iniciais salvas em: ${caminhoCredencial}`);
+      return;
+    }
+
+    console.log("Usuário admin bootstrap criado com senha definida via ambiente.");
+  }
+}).catch((erro) => {
   console.error("Erro ao inicializar schema do banco:", erro.message);
 });
 
@@ -1661,7 +2269,12 @@ setTimeout(async () => {
 // API: STATUS
 // =========================
 app.get("/api/status", (req, res) => {
-  res.json({ ok: true, mensagem: "Servidor funcionando", db_client: DB_CLIENT });
+  res.json({
+    ok: true,
+    mensagem: "Servidor funcionando",
+    db_client: DB_CLIENT,
+    license_mode: LICENSE_MODE
+  });
 });
 
 app.get("/api/app/version", (req, res) => {
@@ -1775,7 +2388,12 @@ app.get("/api/app/update-download", requireAuth, async (req, res) => {
 
 app.get("/api/licenca/status", async (req, res) => {
   const status = await obterStatusLicenca();
-  res.json({ ok: true, modo_remoto: USE_SUPABASE_LICENSE, ...status });
+  res.json({
+    ok: true,
+    modo_remoto: USE_SUPABASE_LICENSE,
+    modo_licenca: LICENSE_MODE,
+    ...status
+  });
 });
 
 app.get("/api/licenca/maquina", async (req, res) => {
@@ -1820,7 +2438,7 @@ app.post("/api/cadastro", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Usuário deve ter ao menos 3 caracteres" });
     }
 
-    const erroSenha = validarSenhaForte(senha);
+    const erroSenha = validateStrongPassword(senha);
     if (erroSenha) {
       return res.status(400).json({ error: erroSenha });
     }
@@ -1897,6 +2515,7 @@ app.post("/api/login", async (req, res) => {
       return res.status(401).json({ error: "Senha incorreta" });
     }
 
+    await regenerateSession(req);
     req.session.user = { usuario: user.usuario, perfil: user.perfil };
     await registrarAuditoria(req, "LOGIN_SUCESSO", "auth", user.id, {
       usuario: user.usuario,
@@ -2028,10 +2647,13 @@ app.post("/api/alterar-senha", requireAuth, async (req, res) => {
     const isHash = typeof user.senha === "string" && user.senha.startsWith("$2");
     const senhaOk = isHash ? await bcrypt.compare(atual, user.senha) : user.senha === atual;
     if (!senhaOk) return res.status(401).json({ error: "Senha atual incorreta" });
-    const erroSenha = validarSenhaForte(nova);
+    const erroSenha = validateStrongPassword(nova);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
     const hash = await bcrypt.hash(nova, 10);
     await runQuery(`UPDATE usuarios SET senha = ? WHERE usuario = ?`, [hash, usuarioSessao]);
+    if (usuarioSessao === "admin") {
+      clearBootstrapAdminArtifacts({ runtimeBaseDir: RUNTIME_BASE_DIR });
+    }
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2045,7 +2667,7 @@ app.post("/api/usuarios/:id/reset-senha", requireAdmin, async (req, res) => {
     const { senha_nova } = req.body || {};
     const nova = normalizeText(senha_nova);
     if (!nova) return res.status(400).json({ error: "Informe a nova senha" });
-    const erroSenha = validarSenhaForte(nova);
+    const erroSenha = validateStrongPassword(nova);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
     const user = await getQuery(`SELECT * FROM usuarios WHERE id = ?`, [id]);
     if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
@@ -2078,7 +2700,7 @@ app.post("/api/usuarios", requireAdmin, async (req, res) => {
     if (!usuario || !senha) {
       return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
     }
-    const erroSenha = validarSenhaForte(senha);
+    const erroSenha = validateStrongPassword(senha);
     if (erroSenha) return res.status(400).json({ error: erroSenha });
 
     const existente = await getQuery(`SELECT id FROM usuarios WHERE usuario = ?`, [usuario]);
@@ -2500,65 +3122,10 @@ app.get("/api/items", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/api/itens", requirePerm("criar_itens"), async (req, res) => {
-  try {
-    const {
-      ferramenta,
-      categoria,
-      marca_modelo,
-      quantidade_total,
-      localizacao,
-      estado_inicial,
-      observacao
-    } = req.body;
+async function criarItemFerramentaria(req, res, options = {}) {
+  let fotoArquivo = null;
+  let notaFiscalArquivo = null;
 
-    const nomeFerramenta = normalizeText(ferramenta);
-
-    if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta é obrigatório" });
-    }
-
-    const codigoFinal = await gerarCodigoAutomatico();
-
-    const result = await runQuery(
-      `INSERT INTO itens (
-        codigo,
-        ferramenta,
-        categoria,
-        marca_modelo,
-        quantidade_total,
-        localizacao,
-        estado_inicial,
-        observacao
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        codigoFinal,
-        nomeFerramenta,
-        categoriaPadronizada(categoria, nomeFerramenta),
-        normalizeText(marca_modelo),
-        parseNumero(quantidade_total),
-        normalizeText(localizacao),
-        normalizeText(estado_inicial),
-        normalizeText(observacao)
-      ]
-    );
-
-    await registrarAuditoria(req, "CRIAR_ITEM", "item", result.id, {
-      codigo: codigoFinal,
-      ferramenta: nomeFerramenta
-    });
-
-    res.json({ ok: true, codigo: codigoFinal });
-  } catch (e) {
-    if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "Já existe um item com esse código." });
-    }
-
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post("/api/items", requirePerm("criar_itens"), async (req, res) => {
   try {
     const {
       nome,
@@ -2569,15 +3136,35 @@ app.post("/api/items", requirePerm("criar_itens"), async (req, res) => {
       localizacao,
       estado_inicial,
       observacao
-    } = req.body;
+    } = req.body || {};
 
-    const nomeFerramenta = normalizeText(ferramenta || nome);
+    const nomeFerramenta = normalizeText(options.acceptNomeAlias ? (ferramenta || nome) : ferramenta);
+    const localizacaoFerramentaria = normalizeFerramentariaLocation(localizacao);
 
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta/nome é obrigatório" });
+      return res.status(400).json({
+        error: options.acceptNomeAlias
+          ? "O campo ferramenta/nome é obrigatório"
+          : "O campo ferramenta é obrigatório"
+      });
     }
 
     const codigoFinal = await gerarCodigoAutomatico();
+    const fotoUpload = req.files?.foto_ferramenta?.[0] || null;
+    const notaFiscalUpload = req.files?.nota_fiscal_ferramenta?.[0] || null;
+
+    if (fotoUpload) {
+      fotoArquivo = await enviarFotoFerramentaParaUniqCodeFiles({
+        arquivo: fotoUpload,
+        codigoItem: codigoFinal
+      });
+    }
+    if (notaFiscalUpload) {
+      notaFiscalArquivo = await enviarNotaFiscalFerramentaParaUniqCodeFiles({
+        arquivo: notaFiscalUpload,
+        codigoItem: codigoFinal
+      });
+    }
 
     const result = await runQuery(
       `INSERT INTO itens (
@@ -2588,95 +3175,99 @@ app.post("/api/items", requirePerm("criar_itens"), async (req, res) => {
         quantidade_total,
         localizacao,
         estado_inicial,
-        observacao
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        observacao,
+        foto_file_id,
+        foto_public_url,
+        foto_download_url,
+        foto_public_slug,
+        foto_original_name
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         codigoFinal,
         nomeFerramenta,
         categoriaPadronizada(categoria, nomeFerramenta),
         normalizeText(marca_modelo),
         parseNumero(quantidade_total),
-        normalizeText(localizacao),
+        localizacaoFerramentaria,
         normalizeText(estado_inicial),
-        normalizeText(observacao)
+        normalizeText(observacao),
+        fotoArquivo?.id || null,
+        fotoArquivo?.public_url || null,
+        fotoArquivo?.download_url || null,
+        fotoArquivo?.public_slug || null,
+        fotoArquivo?.original_name || null
       ]
     );
 
     await registrarAuditoria(req, "CRIAR_ITEM", "item", result.id, {
       codigo: codigoFinal,
-      ferramenta: nomeFerramenta
+      ferramenta: nomeFerramenta,
+      foto_file_id: fotoArquivo?.id || null,
+      nota_fiscal_file_id: notaFiscalArquivo?.id || null
     });
 
-    res.json({ ok: true, codigo: codigoFinal });
-  } catch (e) {
-    if (String(e.message).includes("UNIQUE constraint failed")) {
-      return res.status(400).json({ error: "Já existe um item com esse código." });
-    }
-
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.put("/api/itens/:id", requirePerm("editar_itens"), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const itemAtual = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
-
-    if (!itemAtual) {
-      return res.status(404).json({ error: "Item não encontrado" });
-    }
-
-    const {
-      codigo,
-      ferramenta,
-      categoria,
-      marca_modelo,
-      quantidade_total,
-      localizacao,
-      estado_inicial,
-      observacao
-    } = req.body || {};
-
-    const nomeFerramenta = normalizeText(ferramenta);
-    if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta é obrigatório" });
-    }
-
-    const codigoFinal = await validarCodigoDisponivelParaItem(codigo || itemAtual.codigo, id);
-
-    await runQuery(
-      `UPDATE itens
-       SET codigo = ?, ferramenta = ?, categoria = ?, marca_modelo = ?, quantidade_total = ?,
-           localizacao = ?, estado_inicial = ?, observacao = ?
-       WHERE id = ?`,
-      [
-        codigoFinal,
-        nomeFerramenta,
-        categoriaPadronizada(categoria, nomeFerramenta),
-        normalizeText(marca_modelo),
-        parseNumero(quantidade_total),
-        normalizeText(localizacao),
-        normalizeText(estado_inicial),
-        normalizeText(observacao),
-        id
-      ]
-    );
-
-    await registrarAuditoria(req, "EDITAR_ITEM", "item", id, {
+    return res.json({
+      ok: true,
       codigo: codigoFinal,
-      ferramenta: nomeFerramenta
+      foto: fotoArquivo
+        ? {
+            id: fotoArquivo.id,
+            public_url: fotoArquivo.public_url,
+            public_slug: fotoArquivo.public_slug,
+            original_name: fotoArquivo.original_name
+          }
+        : null,
+      nota_fiscal: notaFiscalArquivo
+        ? {
+            id: notaFiscalArquivo.id,
+            public_url: notaFiscalArquivo.public_url,
+            public_slug: notaFiscalArquivo.public_slug,
+            original_name: notaFiscalArquivo.original_name
+          }
+        : null
     });
-
-    return res.json({ ok: true });
   } catch (e) {
+    if (fotoArquivo?.id) {
+      await excluirArquivoDoUniqCodeFiles(fotoArquivo.id);
+    }
+    if (notaFiscalArquivo?.id) {
+      await excluirArquivoDoUniqCodeFiles(notaFiscalArquivo.id);
+    }
+
+    if (e?.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
     if (String(e.message).includes("UNIQUE constraint failed")) {
       return res.status(400).json({ error: "Já existe um item com esse código." });
     }
+
     return res.status(500).json({ error: e.message });
+  } finally {
+    const uploads = Object.values(req.files || {}).flat();
+    for (const arquivo of uploads) {
+      await removerArquivoTemporario(arquivo?.path);
+    }
   }
+}
+
+const uploadArquivosFerramentaria = upload.fields([
+  { name: "foto_ferramenta", maxCount: 1 },
+  { name: "nota_fiscal_ferramenta", maxCount: 1 }
+]);
+
+app.post("/api/itens", requirePerm("criar_itens"), uploadArquivosFerramentaria, async (req, res) => {
+  await criarItemFerramentaria(req, res, { acceptNomeAlias: false });
 });
 
-app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
+app.post("/api/items", requirePerm("criar_itens"), uploadArquivosFerramentaria, async (req, res) => {
+  await criarItemFerramentaria(req, res, { acceptNomeAlias: true });
+});
+
+async function atualizarItemFerramentaria(req, res, options = {}) {
+  let fotoArquivo = null;
+  let notaFiscalArquivo = null;
+  let fotoAnteriorId = null;
+
   try {
     const id = Number(req.params.id);
     const itemAtual = await getQuery(`SELECT * FROM itens WHERE id = ?`, [id]);
@@ -2697,17 +3288,39 @@ app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
       observacao
     } = req.body || {};
 
-    const nomeFerramenta = normalizeText(ferramenta || nome);
+    const nomeFerramenta = normalizeText(options.acceptNomeAlias ? (ferramenta || nome) : ferramenta);
+    const localizacaoFerramentaria = normalizeFerramentariaLocation(localizacao || itemAtual.localizacao);
     if (!nomeFerramenta) {
-      return res.status(400).json({ error: "O campo ferramenta/nome é obrigatório" });
+      return res.status(400).json({
+        error: options.acceptNomeAlias
+          ? "O campo ferramenta/nome é obrigatório"
+          : "O campo ferramenta é obrigatório"
+      });
     }
 
     const codigoFinal = await validarCodigoDisponivelParaItem(codigo || itemAtual.codigo, id);
+    const fotoUpload = req.files?.foto_ferramenta?.[0] || null;
+    const notaFiscalUpload = req.files?.nota_fiscal_ferramenta?.[0] || null;
+
+    if (fotoUpload) {
+      fotoAnteriorId = normalizeText(itemAtual.foto_file_id);
+      fotoArquivo = await enviarFotoFerramentaParaUniqCodeFiles({
+        arquivo: fotoUpload,
+        codigoItem: codigoFinal
+      });
+    }
+    if (notaFiscalUpload) {
+      notaFiscalArquivo = await enviarNotaFiscalFerramentaParaUniqCodeFiles({
+        arquivo: notaFiscalUpload,
+        codigoItem: codigoFinal
+      });
+    }
 
     await runQuery(
       `UPDATE itens
        SET codigo = ?, ferramenta = ?, categoria = ?, marca_modelo = ?, quantidade_total = ?,
-           localizacao = ?, estado_inicial = ?, observacao = ?
+           localizacao = ?, estado_inicial = ?, observacao = ?, foto_file_id = ?, foto_public_url = ?,
+           foto_download_url = ?, foto_public_slug = ?, foto_original_name = ?
        WHERE id = ?`,
       [
         codigoFinal,
@@ -2715,25 +3328,76 @@ app.put("/api/items/:id", requirePerm("editar_itens"), async (req, res) => {
         categoriaPadronizada(categoria, nomeFerramenta),
         normalizeText(marca_modelo),
         parseNumero(quantidade_total),
-        normalizeText(localizacao),
+        localizacaoFerramentaria,
         normalizeText(estado_inicial),
         normalizeText(observacao),
+        fotoArquivo?.id || itemAtual.foto_file_id || null,
+        fotoArquivo?.public_url || itemAtual.foto_public_url || null,
+        fotoArquivo?.download_url || itemAtual.foto_download_url || null,
+        fotoArquivo?.public_slug || itemAtual.foto_public_slug || null,
+        fotoArquivo?.original_name || itemAtual.foto_original_name || null,
         id
       ]
     );
 
+    if (fotoAnteriorId && fotoArquivo?.id && fotoAnteriorId !== fotoArquivo.id) {
+      await excluirArquivoDoUniqCodeFiles(fotoAnteriorId);
+    }
+
     await registrarAuditoria(req, "EDITAR_ITEM", "item", id, {
       codigo: codigoFinal,
-      ferramenta: nomeFerramenta
+      ferramenta: nomeFerramenta,
+      foto_file_id: fotoArquivo?.id || itemAtual.foto_file_id || null,
+      nota_fiscal_file_id: notaFiscalArquivo?.id || null
     });
 
-    return res.json({ ok: true });
+    return res.json({
+      ok: true,
+      foto: fotoArquivo
+        ? {
+            id: fotoArquivo.id,
+            public_url: fotoArquivo.public_url,
+            public_slug: fotoArquivo.public_slug,
+            original_name: fotoArquivo.original_name
+          }
+        : null,
+      nota_fiscal: notaFiscalArquivo
+        ? {
+            id: notaFiscalArquivo.id,
+            public_url: notaFiscalArquivo.public_url,
+            public_slug: notaFiscalArquivo.public_slug,
+            original_name: notaFiscalArquivo.original_name
+          }
+        : null
+    });
   } catch (e) {
+    if (fotoArquivo?.id) {
+      await excluirArquivoDoUniqCodeFiles(fotoArquivo.id);
+    }
+    if (notaFiscalArquivo?.id) {
+      await excluirArquivoDoUniqCodeFiles(notaFiscalArquivo.id);
+    }
+    if (e?.status) {
+      return res.status(e.status).json({ error: e.message });
+    }
     if (String(e.message).includes("UNIQUE constraint failed")) {
       return res.status(400).json({ error: "Já existe um item com esse código." });
     }
     return res.status(500).json({ error: e.message });
+  } finally {
+    const uploads = Object.values(req.files || {}).flat();
+    for (const arquivo of uploads) {
+      await removerArquivoTemporario(arquivo?.path);
+    }
   }
+}
+
+app.put("/api/itens/:id", requirePerm("editar_itens"), uploadArquivosFerramentaria, async (req, res) => {
+  await atualizarItemFerramentaria(req, res, { acceptNomeAlias: false });
+});
+
+app.put("/api/items/:id", requirePerm("editar_itens"), uploadArquivosFerramentaria, async (req, res) => {
+  await atualizarItemFerramentaria(req, res, { acceptNomeAlias: true });
 });
 
 app.delete("/api/itens/:id", requirePerm("excluir_itens"), async (req, res) => {
@@ -2886,6 +3550,107 @@ app.post("/api/almoxarifado/itens", requirePerm("criar_itens"), async (req, res)
     res.json({ ok: true, codigo: codigoFinal });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/almoxarifado/itens/:id", requirePerm("editar_itens"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const itemAtual = await getQuery(`SELECT * FROM almoxarifado_itens WHERE id = ?`, [id]);
+
+    if (!itemAtual) {
+      return res.status(404).json({ error: "Material do almoxarifado não encontrado" });
+    }
+
+    const {
+      codigo,
+      ferramenta,
+      categoria,
+      marca_modelo,
+      quantidade_total,
+      unidade_medida,
+      embalagem,
+      estoque_minimo,
+      fornecedor,
+      localizacao,
+      estado_inicial,
+      observacao
+    } = req.body || {};
+
+    const nomeMaterial = normalizeText(ferramenta);
+    if (!nomeMaterial) {
+      return res.status(400).json({ error: "O campo material é obrigatório" });
+    }
+
+    const codigoFinal = await validarCodigoDisponivelParaAlmoxItem(codigo || itemAtual.codigo, id);
+
+    await runQuery(
+      `UPDATE almoxarifado_itens
+       SET codigo = ?, ferramenta = ?, categoria = ?, marca_modelo = ?, quantidade_total = ?,
+           unidade_medida = ?, embalagem = ?, estoque_minimo = ?, fornecedor = ?,
+           localizacao = ?, estado_inicial = ?, observacao = ?
+       WHERE id = ?`,
+      [
+        codigoFinal,
+        nomeMaterial,
+        categoriaPadronizada(categoria, nomeMaterial),
+        normalizeText(marca_modelo),
+        parseNumero(quantidade_total),
+        normalizeText(unidade_medida || "un"),
+        normalizeText(embalagem),
+        parseNumero(estoque_minimo),
+        normalizeText(fornecedor),
+        normalizeText(localizacao || "Almoxarifado"),
+        normalizeText(estado_inicial),
+        normalizeText(observacao),
+        id
+      ]
+    );
+
+    await registrarAuditoria(req, "EDITAR_ITEM_ALMOX", "almoxarifado_item", id, {
+      codigo: codigoFinal,
+      ferramenta: nomeMaterial
+    });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    if (String(e.message).includes("UNIQUE constraint failed")) {
+      return res.status(400).json({ error: "Já existe um material com esse código." });
+    }
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/almoxarifado/itens/:id", requirePerm("excluir_itens"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const itemAtual = await getQuery(`SELECT id, codigo, ferramenta FROM almoxarifado_itens WHERE id = ?`, [id]);
+
+    if (!itemAtual) {
+      return res.status(404).json({ error: "Material do almoxarifado não encontrado" });
+    }
+
+    const movimentacoes = await getQuery(
+      `SELECT COUNT(*) AS total FROM almoxarifado_movimentacoes WHERE item_id = ?`,
+      [id]
+    );
+
+    if (Number(movimentacoes?.total || 0) > 0) {
+      return res.status(400).json({
+        error: "Não é possível excluir materiais com histórico de movimentações."
+      });
+    }
+
+    await runQuery(`DELETE FROM almoxarifado_itens WHERE id = ?`, [id]);
+
+    await registrarAuditoria(req, "EXCLUIR_ITEM_ALMOX", "almoxarifado_item", id, {
+      codigo: itemAtual.codigo,
+      ferramenta: itemAtual.ferramenta
+    });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 });
 
@@ -3132,6 +3897,31 @@ app.post("/api/movements", requirePerm("registrar_movimentacao"), async (req, re
 // =========================
 // GERAR QR CODE
 // =========================
+app.get("/p/ferramentaria/:codigo", async (req, res) => {
+  try {
+    const codigo = normalizeText(req.params.codigo);
+    const item = await getQuery(`SELECT * FROM itens WHERE codigo = ?`, [codigo]);
+
+    if (!item) {
+      return res.status(404).send("Ferramenta não encontrada.");
+    }
+
+    const anexos = await listarArquivosUniqCodeFilesPorReferencia(item.codigo);
+    const arquivos = classificarArquivosPublicos(anexos.files);
+    const html = renderizarFichaPublicaFerramentaria({
+      item,
+      fotoPrincipalUrl: arquivos.fotos[0]?.public_url || item.foto_public_url || "",
+      documentos: arquivos.documentos,
+      anexosIndisponiveis: anexos.indisponivel
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(html);
+  } catch (e) {
+    return res.status(500).send(e.message || "Não foi possível abrir a ficha pública da ferramenta.");
+  }
+});
+
 app.get("/api/qrcode/:id", requirePerm("ver_etiquetas"), async (req, res) => {
   const id = req.params.id;
 
@@ -3142,7 +3932,33 @@ app.get("/api/qrcode/:id", requirePerm("ver_etiquetas"), async (req, res) => {
       return res.status(404).json({ error: "Item não encontrado" });
     }
 
-    const conteudoQR = `UNIQ-${item.codigo || item.id}`;
+    const codigo = item.codigo || item.id;
+    const conteudoQR = buildPublicItemUrl(req, "ferramentaria", codigo);
+    const qr = await QRCode.toDataURL(conteudoQR);
+
+    res.json({
+      qr,
+      codigo: codigo || "",
+      ferramenta: item.ferramenta || "",
+      conteudo: conteudoQR,
+      public_url: conteudoQR
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/almoxarifado/qrcode/:id", requirePerm("ver_etiquetas"), async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const item = await getQuery(`SELECT * FROM almoxarifado_itens WHERE id = ?`, [id]);
+
+    if (!item) {
+      return res.status(404).json({ error: "Material do almoxarifado não encontrado" });
+    }
+
+    const conteudoQR = `ALMOX-${item.codigo || item.id}`;
     const qr = await QRCode.toDataURL(conteudoQR);
 
     res.json({
@@ -3170,6 +3986,27 @@ app.get("/api/item-qr/:codigo", requirePerm("usar_scanner"), async (req, res) =>
 
     if (!item) {
       return res.status(404).json({ error: "Ferramenta não encontrada" });
+    }
+
+    res.json(item);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/almoxarifado/item-qr/:codigo", requirePerm("usar_scanner"), async (req, res) => {
+  const codigo = normalizeText(req.params.codigo)
+    .replace(/^ALMOX-/i, "")
+    .replace(/^UNIQ-/i, "");
+
+  try {
+    const item = await getQuery(
+      `SELECT * FROM almoxarifado_itens WHERE codigo = ?`,
+      [codigo]
+    );
+
+    if (!item) {
+      return res.status(404).json({ error: "Material do almoxarifado não encontrado" });
     }
 
     res.json(item);
@@ -3338,7 +4175,7 @@ app.post("/api/corrigir-codigos-antigos", requireAdmin, async (req, res) => {
 // =========================
 app.get("/api/debug-itens", requireAdmin, async (req, res) => {
   if (process.env.NODE_ENV !== "development") {
-    return res.status(404).json({ error: "Rota indisponivel" });
+    return res.status(404).json({ error: "Rota indisponível" });
   }
 
   try {
@@ -3509,9 +4346,15 @@ app.get("/api/exportar-inventario", requirePerm("importar_exportar"), async (req
 // =========================
 // INICIAR SERVIDOR
 // =========================
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`UniqStock rodando em http://localhost:${PORT}`);
 });
+
+server.on("error", (error) => {
+  console.error(`Falha ao iniciar servidor HTTP na porta ${PORT}: ${error.message}`);
+});
+
+module.exports = server;
 
 // =========================
 // BACKUP AUTOMÁTICO DIÁRIO

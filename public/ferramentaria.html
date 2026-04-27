@@ -12,20 +12,19 @@
 <body>
   <div class="app-layout">
     <aside class="sidebar">
-      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
-        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+      <div class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo">
         <p>Sistema de Inventário</p>
-      </a>
+      </div>
 
       <nav class="sidebar-nav">
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span><span class="sidebar-link-label">Painel</span></a>
-        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário</span></a>
-        <a href="ferramentaria.html" class="ativo"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Ferramentaria</span></a>
-        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span><span class="sidebar-link-label">Almoxarifado</span></a>
+        <a href="index.html"><span class="sidebar-icon">📦</span><span class="sidebar-link-label">Inventário da Ferramentaria</span></a>
+        <a href="ferramentaria.html" class="ativo"><span class="sidebar-icon">🧰</span><span class="sidebar-link-label">Balcão da Ferramentaria</span></a>
         <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span><span class="sidebar-link-label">Cadastrar Ferramenta</span></a>
         <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span><span class="sidebar-link-label">Etiquetas</span></a>
         <a href="scanner.html"><span class="sidebar-icon">📷</span><span class="sidebar-link-label">Scanner</span></a>
-        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Movimentações</span></a>
+        <a href="movimentacoes-ferramentaria.html"><span class="sidebar-icon">📑</span><span class="sidebar-link-label">Histórico da Ferramentaria</span></a>
         <a href="usuarios.html"><span class="sidebar-icon">👥</span><span class="sidebar-link-label">Usuários</span></a>
         <a href="perfil.html"><span class="sidebar-icon">👤</span><span class="sidebar-link-label">Perfil</span></a>
         <a href="permissoes.html"><span class="sidebar-icon">🛡️</span><span class="sidebar-link-label">Permissões</span></a>
@@ -41,7 +40,7 @@
     <main class="main-content">
       <header class="page-header">
         <div class="inventory-header-copy">
-          <span class="inventory-kicker">Balcão de saída</span>
+          <span class="inventory-kicker">Balcão da Ferramentaria</span>
           <h2>Ferramentaria</h2>
           <p>Entrega e devolução de ferramentas com foco no controle operacional da Ferramentaria.</p>
         </div>
@@ -52,10 +51,6 @@
           <div class="warehouse-toolbar">
             <div>
               <span class="warehouse-badge warehouse-badge-tools">Localização fixa: Ferramentaria</span>
-            </div>
-            <div class="warehouse-actions">
-              <a class="btn-secondary inventory-link-btn" href="scanner.html">Usar scanner</a>
-              <a class="btn-secondary inventory-link-btn" href="movimentacoes.html">Histórico geral</a>
             </div>
           </div>
 
@@ -135,7 +130,7 @@
               </div>
 
               <div class="inventory-meta">
-                <p id="ftResumoLista" class="inventory-summary">Carregando ferramentas...</p>
+                <p id="ftResumoLista" class="inventory-summary">Carregando itens da Ferramentaria...</p>
                 <span class="inventory-hint">Lista exibida somente para itens com localização Ferramentaria.</span>
               </div>
 
@@ -160,7 +155,7 @@
           <section class="painel-lista ferramentaria-historico">
             <div class="painel-tabela-head">
               <h2>Últimas operações da Ferramentaria</h2>
-              <span id="ftResumoMov" class="inventory-summary">Carregando histórico...</span>
+              <span id="ftResumoMov" class="inventory-summary">Carregando movimentações da Ferramentaria...</span>
             </div>
 
             <div class="tabela-wrap">
@@ -304,7 +299,9 @@
       const resumo = document.getElementById("ftResumoLista");
 
       tbody.innerHTML = "";
-      resumo.textContent = `${lista.length} ferramenta(s) exibida(s) na Ferramentaria`;
+      resumo.textContent = lista.length === 1
+        ? "1 ferramenta exibida na Ferramentaria."
+        : `${lista.length} ferramentas exibidas na Ferramentaria.`;
 
       if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Nenhuma ferramenta encontrada na Ferramentaria.</td></tr>';
@@ -329,10 +326,12 @@
       const tbody = document.getElementById("ftTabelaMov");
       const resumo = document.getElementById("ftResumoMov");
       tbody.innerHTML = "";
-      resumo.textContent = `${movimentosFerramentaria.length} operação(ões) recentes na Ferramentaria`;
+      resumo.textContent = movimentosFerramentaria.length === 1
+        ? "1 movimentação recente na Ferramentaria."
+        : `${movimentosFerramentaria.length} movimentações recentes na Ferramentaria.`;
 
       if (!movimentosFerramentaria.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma operação registrada ainda para a Ferramentaria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma movimentação registrada ainda na Ferramentaria.</td></tr>';
         return;
       }
 
@@ -422,9 +421,9 @@
         atualizarItemSelecionado();
       } catch (err) {
         if (!redirecionarErro(err)) {
-          document.getElementById("ftStatus").textContent = err.message || "Erro ao carregar Ferramentaria.";
-          document.getElementById("ftResumoLista").textContent = "Erro ao carregar ferramentas.";
-          document.getElementById("ftResumoMov").textContent = "Erro ao carregar histórico.";
+          document.getElementById("ftStatus").textContent = err.message || "Não foi possível carregar a Ferramentaria.";
+          document.getElementById("ftResumoLista").textContent = "Não foi possível carregar os itens da Ferramentaria.";
+          document.getElementById("ftResumoMov").textContent = "Não foi possível carregar as movimentações.";
         }
       }
     }
@@ -459,3 +458,4 @@
   </script>
 </body>
 </html>
+

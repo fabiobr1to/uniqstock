@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login | UniqStock</title>
+    <title>Acesso | UniqStock</title>
     <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -13,19 +13,19 @@
     <main class="login-page">
         <section class="login-card">
             <div class="login-header">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo-light"></a>
-                <p>Acesso ao sistema</p>
+                <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo-light"></div>
+                <p>Acesse sua conta</p>
             </div>
 
             <form id="loginForm" class="login-form" autocomplete="off" data-form-type="other" data-lpignore="true">
                 <div class="form-group">
                     <label for="usuario">Usuário</label>
-                    <input type="text" id="usuario" name="usuario_real" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Digite seu usuário" required readonly onfocus="this.removeAttribute('readonly');" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+                    <input type="text" id="usuario" name="usuario_real" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Informe seu usuário" required readonly onfocus="this.removeAttribute('readonly');" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
                 </div>
 
                 <div class="form-group">
                     <label for="senha">Senha</label>
-                    <input type="password" id="senha" name="senha_real" autocomplete="new-password" placeholder="Digite sua senha" required readonly onfocus="this.removeAttribute('readonly');" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+                    <input type="password" id="senha" name="senha_real" autocomplete="new-password" placeholder="Informe sua senha" required readonly onfocus="this.removeAttribute('readonly');" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
                 </div>
 
                 <input type="text" name="fake_user" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true" />
@@ -36,7 +36,7 @@
                 <div id="loginProgress" class="login-progress" aria-hidden="true">
                     <div id="loginProgressBar" class="login-progress-bar"></div>
                 </div>
-                <p class="login-link">Criação de usuário: somente administrador</p>
+                <p class="login-link">O cadastro de usuários está disponível apenas para administradores.</p>
             </form>
         </section>
     </main>
@@ -111,7 +111,7 @@
             const usuario = document.getElementById("usuario").value.trim();
             const senha = document.getElementById("senha").value.trim();
 
-            loginMensagem.textContent = "Entrando...";
+            loginMensagem.textContent = "Entrando no sistema...";
             definirEstadoLogin(true);
             iniciarProgresso();
 
@@ -131,19 +131,19 @@
                         window.location.href = "/ativacao.html";
                         return;
                     }
-                    loginMensagem.textContent = dados.error || "Erro ao entrar";
+                    loginMensagem.textContent = dados.error || "Não foi possível entrar.";
                     definirEstadoLogin(false);
                     finalizarProgresso(false);
                     return;
                 }
 
-                loginMensagem.textContent = "Acesso validado. Preparando painel...";
+                loginMensagem.textContent = "Login realizado. Abrindo o painel...";
                 finalizarProgresso(true);
                 setTimeout(() => {
                     window.location.href = "/dashboard.html";
                 }, 3200);
             } catch (erro) {
-                loginMensagem.textContent = "Erro de conexão com o servidor";
+                loginMensagem.textContent = "Não foi possível conectar ao servidor.";
                 definirEstadoLogin(false);
                 finalizarProgresso(false);
             }

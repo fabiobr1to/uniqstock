@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico da Ferramentaria | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
+  <style>
+    .history-page{
+      display:grid;
+      gap:18px;
+    }
+
+    .history-panel{
+      padding:20px;
+      border:1px solid #e2e8f0;
+      border-radius:20px;
+      background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow:0 12px 28px rgba(15, 23, 42, .05);
+    }
+
+    .history-panel-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .history-panel-head h2{
+      margin:6px 0 0;
+      font-size:22px;
+      color:#0f172a;
+    }
+
+    .history-kicker{
+      display:inline-flex;
+      align-items:center;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      background:#dbeafe;
+      color:#1d4ed8;
+    }
+
+    .history-summary{
+      margin:0 0 14px;
+      color:#64748b;
+      font-size:14px;
+    }
+
+    .history-table-wrap{
+      overflow-x:auto;
+    }
+
+    .history-empty td{
+      text-align:center;
+      color:#64748b;
+      padding:24px 12px;
+    }
+
+    .history-skeleton td{
+      padding:14px 12px;
+    }
+
+    .history-skeleton-line{
+      height:14px;
+      border-radius:999px;
+      background:linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+      background-size:200% 100%;
+      animation:historyShimmer 1.1s linear infinite;
+    }
+
+    .history-skeleton-line-sm{
+      width:60%;
+      margin:0 auto;
+    }
+
+    .btn-retry-history{
+      border:1px solid #dbe3ef;
+      border-radius:14px;
+      min-height:42px;
+      padding:0 16px;
+      background:#0f172a;
+      color:#fff;
+      cursor:pointer;
+      font-weight:700;
+      margin-top:10px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      transition:transform .15s ease, background-color .15s ease, border-color .15s ease;
+    }
+
+    .btn-retry-history:hover{
+      background:#1f2937;
+      transform:translateY(-1px);
+    }
+
+    @keyframes historyShimmer{
+      0% { background-position:200% 0; }
+      100% { background-position:-200% 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
+        <p>Sistema de Inventário</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
+        <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span> Balcão da Ferramentaria</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes-ferramentaria.html" class="ativo"><span class="sidebar-icon">📑</span> Histórico da Ferramentaria</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="inventory-header-copy">
+          <span class="inventory-kicker">Histórico da Ferramentaria</span>
+          <h2>Movimentações da Ferramentaria</h2>
+          <p>Acompanhe apenas as entregas e devoluções registradas na Ferramentaria da PRZ.</p>
+        </div>
+      </header>
+
+      <div class="container">
+        <section class="painel-form inventory-panel history-page">
+          <div>
+            <p class="inventory-summary" id="historyResumoGeral">Carregando movimentações da Ferramentaria...</p>
+          </div>
+
+          <section class="history-panel">
+            <div class="history-panel-head">
+              <div>
+                <span class="history-kicker">Ferramentaria</span>
+                <h2>Histórico operacional da Ferramentaria</h2>
+              </div>
+            </div>
+            <p id="historyResumoTabela" class="history-summary">Carregando movimentações da Ferramentaria...</p>
+
+            <div class="history-table-wrap">
+              <table class="tabela-mov">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Código</th>
+                    <th>Ferramenta</th>
+                    <th>Tipo</th>
+                    <th>Quantidade</th>
+                    <th>Obra</th>
+                    <th>Funcionário</th>
+                    <th>Observação</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTabela"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const TOTAL_COLUNAS = 8;
+    const tabela = document.getElementById("historyTabela");
+    const resumoGeral = document.getElementById("historyResumoGeral");
+    const resumoTabela = document.getElementById("historyResumoTabela");
+
+    function escapeHtml(valor) {
+      return String(valor ?? "-")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    async function getJson(url) {
+      const res = await fetch(url, { credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "Erro");
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    function redirecionarErro(err) {
+      if (err?.status === 401) {
+        window.location.href = "/login.html";
+        return true;
+      }
+      if (err?.status === 403) {
+        window.location.href = "/acesso-negado.html";
+        return true;
+      }
+      return false;
+    }
+
+    function mostrarSkeleton(qtdLinhas = 6) {
+      tabela.innerHTML = "";
+      for (let i = 0; i < qtdLinhas; i += 1) {
+        const tr = document.createElement("tr");
+        tr.className = "history-skeleton";
+        tr.innerHTML = `
+          <td><div class="history-skeleton-line"></div></td>
+          <td><div class="history-skeleton-line"></div></td>
+          <td><div class="history-skeleton-line"></div></td>
+          <td><div class="history-skeleton-line"></div></td>
+          <td><div class="history-skeleton-line history-skeleton-line-sm"></div></td>
+          <td><div class="history-skeleton-line"></div></td>
+          <td><div class="history-skeleton-line"></div></td>
+          <td><div class="history-skeleton-line"></div></td>
+        `;
+        tabela.appendChild(tr);
+      }
+    }
+
+    function mostrarEstado(texto, erro = false) {
+      tabela.innerHTML = `
+        <tr class="history-empty">
+          <td colspan="${TOTAL_COLUNAS}">
+            <div>${texto}</div>
+            ${erro ? '<button type="button" class="btn-retry-history" onclick="carregarHistorico()">Tentar novamente</button>' : ""}
+          </td>
+        </tr>
+      `;
+    }
+
+    function preencherTabela(movimentos) {
+      tabela.innerHTML = "";
+
+      if (!Array.isArray(movimentos) || movimentos.length === 0) {
+        mostrarEstado("Nenhuma movimentação registrada na Ferramentaria até o momento.");
+        return;
+      }
+
+      movimentos.forEach((movimento) => {
+        const tr = document.createElement("tr");
+        const data = movimento.data ? new Date(movimento.data).toLocaleString("pt-BR") : "-";
+
+        tr.innerHTML = `
+          <td data-label="Data">${escapeHtml(data)}</td>
+          <td data-label="Código">${escapeHtml(movimento.codigo || "-")}</td>
+          <td class="cell-truncate" data-label="Ferramenta" title="${escapeHtml(movimento.ferramenta || "-")}">${escapeHtml(movimento.ferramenta || "-")}</td>
+          <td data-label="Tipo">${escapeHtml(movimento.tipo || "-")}</td>
+          <td data-label="Quantidade">${escapeHtml(movimento.quantidade ?? "-")}</td>
+          <td class="cell-truncate" data-label="Obra" title="${escapeHtml(movimento.obra || "-")}">${escapeHtml(movimento.obra || "-")}</td>
+          <td class="cell-truncate" data-label="Funcionário" title="${escapeHtml(movimento.funcionario || "-")}">${escapeHtml(movimento.funcionario || "-")}</td>
+          <td class="cell-truncate" data-label="Observação" title="${escapeHtml(movimento.observacao || "-")}">${escapeHtml(movimento.observacao || "-")}</td>
+        `;
+
+        tabela.appendChild(tr);
+      });
+    }
+
+    async function carregarHistorico() {
+      mostrarSkeleton();
+      resumoGeral.textContent = "Carregando movimentações da Ferramentaria...";
+      resumoTabela.textContent = "Carregando movimentações da Ferramentaria...";
+
+      try {
+        const movimentos = await getJson("/api/movimentacoes");
+        preencherTabela(movimentos);
+
+        const total = Array.isArray(movimentos) ? movimentos.length : 0;
+        resumoGeral.textContent = total === 1
+          ? "1 movimentação carregada na Ferramentaria."
+          : `${total} movimentações carregadas na Ferramentaria.`;
+        resumoTabela.textContent = total === 1
+          ? "1 registro operacional encontrado."
+          : `${total} registros operacionais encontrados.`;
+      } catch (error) {
+        if (redirecionarErro(error)) return;
+        mostrarEstado("Não foi possível carregar o histórico da Ferramentaria.", true);
+        resumoGeral.textContent = error.message || "Não foi possível consultar a Ferramentaria.";
+        resumoTabela.textContent = "Não foi possível carregar as movimentações.";
+      }
+    }
+
+    window.carregarHistorico = carregarHistorico;
+    carregarHistorico();
+  </script>
+</body>
+</html>

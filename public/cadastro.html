@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Criar Conta | UniqStock</title>
+    <title>Cadastro de Usuário | UniqStock</title>
     <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -12,14 +12,14 @@
     <main class="login-page">
         <section class="login-card">
             <div class="login-header">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo-light"></a>
-                <p>Criação de acesso</p>
+                <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo-light"></div>
+                <p>Cadastro de usuário</p>
             </div>
 
             <form id="cadastroForm" class="login-form">
                 <div class="form-group">
-                    <label for="usuario">Novo usuário</label>
-                    <input type="text" id="usuario" name="usuario" placeholder="Escolha seu usuário" required />
+                    <label for="usuario">Usuário</label>
+                    <input type="text" id="usuario" name="usuario" placeholder="Defina o nome de usuário" required />
                 </div>
 
                 <div class="form-group">
@@ -32,9 +32,9 @@
                     <input type="password" id="confirmarSenha" name="confirmarSenha" placeholder="Repita a senha" required />
                 </div>
 
-                <button type="submit" class="btn-primary">Criar conta</button>
+                <button type="submit" class="btn-primary">Salvar usuário</button>
                 <p id="cadastroMensagem" class="login-mensagem"></p>
-                <p class="login-link"><a href="/login.html">Voltar para login</a></p>
+                <p class="login-link"><a href="/login.html">Voltar para a tela de login</a></p>
             </form>
         </section>
     </main>
@@ -44,11 +44,11 @@
         const cadastroMensagem = document.getElementById("cadastroMensagem");
 
         function validarSenhaForteLocal(senha) {
-            if (senha.length < 8) return "Senha deve ter ao menos 8 caracteres";
-            if (!/[A-Z]/.test(senha)) return "Senha deve conter ao menos 1 letra maiúscula";
-            if (!/[a-z]/.test(senha)) return "Senha deve conter ao menos 1 letra minúscula";
-            if (!/[0-9]/.test(senha)) return "Senha deve conter ao menos 1 número";
-            if (!/[^A-Za-z0-9]/.test(senha)) return "Senha deve conter ao menos 1 caractere especial";
+            if (senha.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
+            if (!/[A-Z]/.test(senha)) return "A senha precisa ter pelo menos 1 letra maiúscula.";
+            if (!/[a-z]/.test(senha)) return "A senha precisa ter pelo menos 1 letra minúscula.";
+            if (!/[0-9]/.test(senha)) return "A senha precisa ter pelo menos 1 número.";
+            if (!/[^A-Za-z0-9]/.test(senha)) return "A senha precisa ter pelo menos 1 caractere especial.";
             return "";
         }
 
@@ -83,7 +83,7 @@
             const confirmarSenha = document.getElementById("confirmarSenha").value;
 
             if (senha !== confirmarSenha) {
-                cadastroMensagem.textContent = "As senhas não conferem";
+                cadastroMensagem.textContent = "As senhas não conferem.";
                 return;
             }
 
@@ -93,7 +93,7 @@
                 return;
             }
 
-            cadastroMensagem.textContent = "Criando conta...";
+            cadastroMensagem.textContent = "Salvando usuário...";
 
             try {
                 const resposta = await fetch("/api/cadastro", {
@@ -107,16 +107,16 @@
                 const dados = await resposta.json();
 
                 if (!resposta.ok) {
-                    cadastroMensagem.textContent = dados.error || "Erro ao criar conta";
+                    cadastroMensagem.textContent = dados.error || "Não foi possível cadastrar o usuário.";
                     return;
                 }
 
-                cadastroMensagem.textContent = "Conta criada com sucesso. Redirecionando...";
+                cadastroMensagem.textContent = "Usuário cadastrado com sucesso. Redirecionando para o login...";
                 setTimeout(() => {
                     window.location.href = "/login.html";
                 }, 1200);
             } catch (erro) {
-                cadastroMensagem.textContent = "Erro de conexão com o servidor";
+                cadastroMensagem.textContent = "Não foi possível conectar ao servidor.";
             }
         });
 

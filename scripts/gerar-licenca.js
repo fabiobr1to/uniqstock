@@ -1,6 +1,18 @@
-const crypto = require("crypto");
+require("dotenv").config();
 
-const SECRET = process.env.UNIQSTOCK_LICENSE_SECRET || "uniqstock-license-secret-change";
+const crypto = require("crypto");
+const path = require("path");
+const { resolveLocalLicenseSecret } = require("../lib/runtime-security");
+
+const ROOT_DIR = path.resolve(__dirname, "..");
+const RUNTIME_BASE_DIR = process.env.UNIQSTOCK_RUNTIME_DIR
+  ? path.resolve(process.env.UNIQSTOCK_RUNTIME_DIR)
+  : ROOT_DIR;
+const { secret: SECRET, source: secretSource } = resolveLocalLicenseSecret({
+  runtimeBaseDir: RUNTIME_BASE_DIR,
+  env: process.env,
+  productionInstall: false
+});
 
 function toBase64Url(input) {
   return Buffer.from(input)
@@ -29,7 +41,7 @@ function gerarChave(cliente, expiraEm, codigoMaquina) {
   const dataIso = normalizarDataIso(expiraEm);
   const maquina = String(codigoMaquina || "").trim().toUpperCase();
   if (!clienteLimpo || !dataIso) {
-    throw new Error("Uso: npm run licenca:gerar -- \"Nome do Cliente\" 2026-12-31 MCH-XXXXXXXXXXXXXXX");
+    throw new Error('Uso: npm run licenca:gerar -- "Nome do Cliente" 2026-12-31 MCH-XXXXXXXXXXXXXXX');
   }
 
   const payload = {
@@ -51,12 +63,16 @@ const codigoMaquina = process.argv[4];
 
 try {
   const chave = gerarChave(cliente, expiraEm, codigoMaquina);
+  if (secretSource !== "env") {
+    console.warn("\nAviso: usando o segredo local de desenvolvimento desta instalação.");
+    console.warn("Para emitir licenças de cliente, defina UNIQSTOCK_LICENSE_SECRET explicitamente.");
+  }
   console.log("\nChave de licença gerada com sucesso:");
   console.log(chave);
   console.log("\nCliente:", cliente);
   console.log("Expira em:", expiraEm);
   console.log("Máquina:", codigoMaquina || "(não vinculada)");
-} catch (e) {
-  console.error("\nErro:", e.message);
+} catch (error) {
+  console.error("\nErro:", error.message);
   process.exit(1);
 }

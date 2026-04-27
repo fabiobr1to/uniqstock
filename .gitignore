@@ -1,5 +1,7 @@
 node_modules/
 .env
+.runtime-security.json
+bootstrap-admin.txt
 
 # Runtime and local data
 uploads/
@@ -8,6 +10,8 @@ db/*.db
 db/*.sqlite
 db/*.sqlite3
 .smoke-runtime-*/
+services/uniqcode-files/runtime/
+services/uniqcode-files/.env
 
 # Logs
 *.log

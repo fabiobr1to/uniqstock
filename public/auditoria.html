@@ -358,13 +358,13 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
         <p>Sistema de Inventário</p>
       </div>
 
       <nav class="sidebar-nav">
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
         <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
         <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
         <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
@@ -437,7 +437,7 @@
               <div class="auditoria-chip-row">
                 <button type="button" class="chip-status ativo" data-acao-rapida="">Todos</button>
                 <button type="button" class="chip-status" data-acao-rapida="LOGIN_SUCESSO">Login Sucesso</button>
-                <button type="button" class="chip-status" data-acao-rapida="LOGIN_FALHA">Login Falha</button>
+                <button type="button" class="chip-status" data-acao-rapida="LOGIN_FALHA">Falha de login</button>
               </div>
 
               <div class="auditoria-status-bar">
@@ -451,7 +451,7 @@
         <section class="auditoria-card">
           <div class="auditoria-table-head">
             <h2>Registro de eventos</h2>
-            <p>Histórico consolidado dos principais acessos e ações do sistema.</p>
+            <p>Histórico dos principais acessos e ações do sistema.</p>
           </div>
           <div class="auditoria-table-shell">
             <table>
@@ -485,7 +485,7 @@
     function formatarAcao(acao) {
       const mapa = {
         LOGIN_SUCESSO: "Login com sucesso",
-        LOGIN_FALHA: "Falha no login"
+        LOGIN_FALHA: "Falha de login"
       };
       return mapa[acao] || acao || "-";
     }
@@ -590,7 +590,7 @@
 
     async function carregarAuditoria() {
       const status = document.getElementById("statusAuditoria");
-      status.textContent = "Carregando registros...";
+      status.textContent = "Carregando registros da auditoria...";
       try {
         const query = obterQueryFiltros();
         const eventos = await api(`/api/auditoria?${query}`);
@@ -598,7 +598,7 @@
       } catch (e) {
         if (e.status === 401) return window.location.href = "/login.html";
         if (e.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e.message || "Erro ao carregar auditoria.";
+        status.textContent = e.message || "Não foi possível carregar a auditoria.";
       }
     }
 
@@ -655,6 +655,10 @@
 </body>
 
 </html>
+
+
+
+
 
 
 

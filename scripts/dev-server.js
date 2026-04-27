@@ -156,7 +156,7 @@ function scheduleRestart(reason) {
     restartServer(reason).catch((error) => {
       console.error(`[dev] Restart failed: ${error.message}`);
     });
-  }, 150);
+  }, 500);
 }
 
 function watchDirectory(target, recursive) {

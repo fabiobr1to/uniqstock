@@ -7,8 +7,12 @@ const { spawn } = require("child_process");
 const bcrypt = require("bcryptjs");
 const { createDatabase } = require("../lib/database");
 const { initDatabaseSchema } = require("../lib/schema");
+const { resolveLocalLicenseSecret } = require("../lib/runtime-security");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
+const RUNTIME_BASE_DIR = process.env.UNIQSTOCK_RUNTIME_DIR
+  ? path.resolve(process.env.UNIQSTOCK_RUNTIME_DIR)
+  : ROOT_DIR;
 const DEFAULT_PORT = 3700 + Math.floor(Math.random() * 200);
 const PORT = Number(process.env.SMOKE_POSTGRES_PORT || process.env.PORT || DEFAULT_PORT);
 const BASE_URL = String(process.env.SMOKE_POSTGRES_BASE_URL || `http://127.0.0.1:${PORT}`);
@@ -20,7 +24,11 @@ const TEMP_ADMIN = `smoke_pg_admin_${TEST_SUFFIX}`;
 const TEMP_ADMIN_PASSWORD = "SmokePg!123";
 const TEMP_OPERATOR = `smoke_pg_oper_${TEST_SUFFIX}`;
 const TEMP_OPERATOR_PASSWORD = "Operador!123";
-const LICENSE_SECRET = process.env.UNIQSTOCK_LICENSE_SECRET || "uniqstock-license-secret-change";
+const { secret: LICENSE_SECRET } = resolveLocalLicenseSecret({
+  runtimeBaseDir: RUNTIME_BASE_DIR,
+  env: process.env,
+  productionInstall: false
+});
 const LICENSE_KEYS = [
   "licenca_ativa",
   "licenca_chave",
@@ -279,7 +287,7 @@ async function main() {
           ...process.env,
           DB_CLIENT: "postgres",
           PORT: String(PORT),
-          UNIQSTOCK_FORCE_LOCAL_LICENSE: process.env.UNIQSTOCK_FORCE_LOCAL_LICENSE || "1"
+          UNIQSTOCK_LICENSE_MODE: "local"
         },
         stdio: ["ignore", "pipe", "pipe"]
       });

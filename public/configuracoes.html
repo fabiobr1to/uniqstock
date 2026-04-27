@@ -15,14 +15,14 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
         <p>Sistema de Inventário</p>
       </div>
 
       <nav class="sidebar-nav">
         <a href="ferramentaria.html"><span class="sidebar-icon">🧰</span> Ferramentaria</a>
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
         <a href="almoxarifado.html"><span class="sidebar-icon">📋</span> Almoxarifado</a>
         <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
         <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
@@ -198,7 +198,7 @@
       try {
         const dados = await api(`/api/app/update-check?current=${encodeURIComponent(versaoAtual)}`);
         if (!dados.latest) {
-          status.textContent = "Nenhuma versão publicada foi encontrada.";
+          status.textContent = "Nenhuma atualização publicada foi encontrada.";
           return;
         }
 
@@ -214,7 +214,7 @@
       } catch (e2) {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao verificar atualização.";
+        status.textContent = e2.message || "Não foi possível verificar atualizações.";
       } finally {
         btn.disabled = false;
       }
@@ -234,7 +234,7 @@
       host.innerHTML = "";
 
       if (!categoriasCustomizadas.length) {
-        host.innerHTML = '<span class="texto-ajuda">Nenhuma categoria extra cadastrada.</span>';
+        host.innerHTML = '<span class="texto-ajuda">Nenhuma categoria extra cadastrada até agora.</span>';
         return;
       }
 
@@ -251,7 +251,7 @@
       host.innerHTML = "";
 
       if (!localizacoesCustomizadas.length) {
-        host.innerHTML = '<span class="texto-ajuda">Nenhuma localização extra cadastrada.</span>';
+        host.innerHTML = '<span class="texto-ajuda">Nenhuma localização extra cadastrada até agora.</span>';
         return;
       }
 
@@ -360,7 +360,7 @@
       } catch (e2) {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao salvar configurações.";
+        status.textContent = e2.message || "Não foi possível salvar as configurações.";
       }
     });
 
@@ -373,7 +373,7 @@
       } catch (e2) {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao executar backup.";
+        status.textContent = e2.message || "Não foi possível executar o backup.";
       }
     });
 
@@ -407,7 +407,7 @@
       salvarCategoriasNoServidor(status).catch((e2) => {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao excluir categoria.";
+        status.textContent = e2.message || "Não foi possível excluir a categoria.";
         carregarCategorias().catch(() => {});
       });
     });
@@ -425,7 +425,7 @@
       salvarLocalizacoesNoServidor(status).catch((e2) => {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao excluir localização.";
+        status.textContent = e2.message || "Não foi possível excluir a localização.";
         carregarLocalizacoes().catch(() => {});
       });
     });
@@ -439,7 +439,7 @@
       } catch (e2) {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao salvar categorias.";
+        status.textContent = e2.message || "Não foi possível salvar as categorias.";
       }
     });
 
@@ -452,7 +452,7 @@
       } catch (e2) {
         if (e2.status === 401) return window.location.href = "/login.html";
         if (e2.status === 403) return window.location.href = "/acesso-negado.html";
-        status.textContent = e2.message || "Erro ao salvar localizações.";
+        status.textContent = e2.message || "Não foi possível salvar as localizações.";
       }
     });
 
@@ -469,13 +469,17 @@
       } else if (e?.status === 403) {
         window.location.href = "/acesso-negado.html";
       } else {
-        document.getElementById("statusBackup").textContent = e.message || "Erro ao carregar configurações.";
+        document.getElementById("statusBackup").textContent = e.message || "Não foi possível carregar as configurações.";
       }
     });
   </script>
 </body>
 
 </html>
+
+
+
+
 
 
 

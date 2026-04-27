@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ativação | UniqStock</title>
+    <title>Ativação da Licença | UniqStock</title>
     <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -12,11 +12,11 @@
     <main class="login-page">
         <section class="login-card ativacao-card">
             <div class="login-header">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20preciso%20ativar%20o%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqStock" class="brand-logo-light"></a>
-                <p>Ativação de licença</p>
+                <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo-light"></div>
+                <p>Ativação da licença</p>
             </div>
 
-            <div id="licencaStatus" class="licenca-status">Verificando licença...</div>
+            <div id="licencaStatus" class="licenca-status">Verificando a licença do sistema...</div>
             <div class="licenca-maquina-box">
                 <p>Código desta máquina:</p>
                 <div class="licenca-maquina-linha">
@@ -28,14 +28,14 @@
             <form id="ativacaoForm" class="login-form">
                 <div class="form-group">
                     <label for="chave">Chave de ativação</label>
-                    <textarea id="chave" rows="3" placeholder="Cole a chave aqui (USK1...)" required></textarea>
+                    <textarea id="chave" rows="3" placeholder="Cole a chave de ativação aqui (USK1...)" required></textarea>
                 </div>
                 <button type="submit" class="btn-primary">Ativar sistema</button>
                 <p id="ativacaoMensagem" class="login-mensagem"></p>
             </form>
 
             <p class="login-link">
-                Precisa de uma chave? <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20ativar%20o%20UniqStock" target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a>
+                Ainda não tem uma chave? <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20ativar%20o%20UniqStock" target="_blank" rel="noopener noreferrer">Fale com nossa equipe no WhatsApp</a>
             </p>
         </section>
     </main>
@@ -58,7 +58,7 @@
             const exp = status.expira_em || "-";
             const cliente = status.cliente || "-";
             licencaStatus.className = "licenca-status ativa";
-            licencaStatus.textContent = `Licença ativa para ${cliente} (expira em ${exp})`;
+                licencaStatus.textContent = `Licença ativa para ${cliente}. Validade até ${exp}.`;
             codigoMaquina.textContent = status.codigo_maquina || "N/D";
         }
 
@@ -66,7 +66,7 @@
             try {
                 const res = await fetch("/api/licenca/status");
                 const dados = await res.json();
-                if (!res.ok) throw new Error(dados.error || "Falha ao consultar licença");
+                if (!res.ok) throw new Error(dados.error || "Não foi possível consultar a licença.");
                 formatarStatus(dados);
                 if (dados.ativa) {
                     setTimeout(() => {
@@ -75,7 +75,7 @@
                 }
             } catch (_) {
                 licencaStatus.className = "licenca-status inativa";
-                licencaStatus.textContent = "Não foi possível validar a licença agora.";
+                licencaStatus.textContent = "Não foi possível validar a licença no momento.";
                 codigoMaquina.textContent = "N/D";
             }
         }
@@ -94,7 +94,7 @@
 
         ativacaoForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            ativacaoMensagem.textContent = "Validando chave...";
+            ativacaoMensagem.textContent = "Validando a chave...";
             ativacaoMensagem.style.color = "";
             try {
                 const chave = campoChave.value.trim();
@@ -105,14 +105,14 @@
                 });
                 const dados = await res.json();
                 if (!res.ok) {
-                    ativacaoMensagem.textContent = dados.error || "Falha ao ativar licença";
+                    ativacaoMensagem.textContent = dados.error || "Não foi possível ativar a licença.";
                     return;
                 }
                 ativacaoMensagem.style.color = "#166534";
                 ativacaoMensagem.textContent = "Licença ativada com sucesso. Redirecionando...";
                 await carregarStatusLicenca();
             } catch (_) {
-                ativacaoMensagem.textContent = "Erro de conexão com o servidor";
+                ativacaoMensagem.textContent = "Não foi possível conectar ao servidor.";
             }
         });
 

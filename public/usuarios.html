@@ -13,12 +13,12 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
         <p>Sistema de Inventário</p>
       </div>
       <nav class="sidebar-nav">
         <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
         <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
         <a href="etiquetas.html"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
         <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
@@ -153,7 +153,7 @@
         e.target.reset();
         carregarUsuarios();
       }catch(err){
-        mensagem.textContent = err.message || "Erro ao criar";
+        mensagem.textContent = err.message || "Não foi possível criar o usuário.";
       }
     });
 
@@ -167,6 +167,10 @@
   </script>
 </body>
 </html>
+
+
+
+
 
 
 

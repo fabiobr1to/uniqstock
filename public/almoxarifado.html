@@ -197,24 +197,24 @@
 <body>
   <div class="app-layout">
     <aside class="sidebar">
-      <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link sidebar-brand">
-        <img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo">
+      <div class="brand-logo-link sidebar-brand">
+        <img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo">
         <p>Sistema de Inventário</p>
-      </a>
+      </div>
 
       <nav class="sidebar-nav">
         <a href="dashboard.html"><span class="sidebar-icon">&#127968;</span><span class="sidebar-link-label">Painel</span></a>
-        <a href="index.html"><span class="sidebar-icon">&#128230;</span><span class="sidebar-link-label">Invent?rio</span></a>
-        <a href="almoxarifado.html" class="ativo"><span class="sidebar-icon">&#128203;</span><span class="sidebar-link-label">Almoxarifado</span></a>
-        <a href="cadastro-almoxarifado.html"><span class="sidebar-icon">&#129520;</span><span class="sidebar-link-label">Cadastrar Material</span></a>
-        <a href="etiquetas.html"><span class="sidebar-icon">&#127991;&#65039;</span><span class="sidebar-link-label">Etiquetas</span></a>
-        <a href="scanner.html"><span class="sidebar-icon">&#128247;</span><span class="sidebar-link-label">Scanner</span></a>
-        <a href="movimentacoes.html"><span class="sidebar-icon">&#128209;</span><span class="sidebar-link-label">Movimenta??es</span></a>
-        <a href="usuarios.html"><span class="sidebar-icon">&#128101;</span><span class="sidebar-link-label">Usu?rios</span></a>
+        <a href="almoxarifado.html" class="ativo"><span class="sidebar-icon">&#128203;</span><span class="sidebar-link-label">Inventário do Almoxarifado</span></a>
+        <a href="balcao-almoxarifado.html"><span class="sidebar-icon">&#129520;</span><span class="sidebar-link-label">Balcão do Almoxarifado</span></a>
+        <a href="cadastro-almoxarifado.html"><span class="sidebar-icon">&#10133;</span><span class="sidebar-link-label">Cadastrar material</span></a>
+        <a href="etiquetas.html?module=almoxarifado"><span class="sidebar-icon">&#127991;&#65039;</span><span class="sidebar-link-label">Etiquetas</span></a>
+        <a href="scanner.html?module=almoxarifado"><span class="sidebar-icon">&#128247;</span><span class="sidebar-link-label">Scanner</span></a>
+        <a href="movimentacoes-almoxarifado.html"><span class="sidebar-icon">&#128209;</span><span class="sidebar-link-label">Histórico do Almoxarifado</span></a>
+        <a href="usuarios.html"><span class="sidebar-icon">&#128101;</span><span class="sidebar-link-label">Usuários</span></a>
         <a href="perfil.html"><span class="sidebar-icon">&#128100;</span><span class="sidebar-link-label">Perfil</span></a>
-        <a href="permissoes.html"><span class="sidebar-icon">&#128737;&#65039;</span><span class="sidebar-link-label">Permiss?es</span></a>
+        <a href="permissoes.html"><span class="sidebar-icon">&#128737;&#65039;</span><span class="sidebar-link-label">Permissões</span></a>
         <a href="auditoria.html"><span class="sidebar-icon">&#129534;</span><span class="sidebar-link-label">Auditoria</span></a>
-        <a href="configuracoes.html"><span class="sidebar-icon">&#9881;&#65039;</span><span class="sidebar-link-label">Configura??es</span></a>
+        <a href="configuracoes.html"><span class="sidebar-icon">&#9881;&#65039;</span><span class="sidebar-link-label">Configurações</span></a>
       </nav>
 
       <div class="sidebar-footer">
@@ -227,7 +227,7 @@
         <div class="inventory-header-copy">
           <span class="inventory-kicker">Controle de materiais</span>
           <h2>Almoxarifado</h2>
-          <p>Saída de materiais e acompanhamento de níveis de estoque para itens armazenados em materiais de consumo.</p>
+          <p>Entrada, saída, importação, exportação e consulta de materiais mantidos exclusivamente no Almoxarifado.</p>
         </div>
       </header>
 
@@ -235,11 +235,10 @@
         <section class="painel-form inventory-panel">
           <div class="warehouse-toolbar">
             <div>
-              <span class="warehouse-badge">Inventário próprio de materiais de consumo</span>
+              <span class="warehouse-badge">Gestão exclusiva de materiais de consumo</span>
             </div>
             <div class="warehouse-actions">
-              <a class="btn-secondary inventory-link-btn" href="index.html">Inventário geral</a>
-              <a class="btn-primary inventory-primary-btn" href="cadastro-almoxarifado.html">Novo insumo</a>
+              <a class="btn-primary inventory-primary-btn" href="cadastro-almoxarifado.html">Cadastrar material</a>
             </div>
           </div>
 
@@ -264,17 +263,24 @@
 
           <section class="warehouse-file-panel">
             <span class="inventory-kicker">Arquivos próprios</span>
-            <h2 style="margin:10px 0 8px;">Importação e exportação de materiais de consumo</h2>
-            <p class="tool-panel-copy">Os arquivos importados por aqui entram no <strong>inventário próprio de materiais de consumo</strong>. A exportação gera PDF só dos materiais desse módulo, sem misturar com a Ferramentaria.</p>
+            <h2 style="margin:10px 0 8px;">Importação e exportação do Almoxarifado</h2>
+            <p class="tool-panel-copy">Os arquivos enviados aqui alimentam somente o Almoxarifado. A exportação gera um PDF exclusivo deste módulo, sem misturar dados da Ferramentaria.</p>
 
             <div class="warehouse-file-actions">
               <form id="formImportacaoAlmox">
-                <div class="form-group">
-                  <label for="arquivoImportacaoAlmox">Arquivo do inventário de materiais de consumo</label>
-                  <input id="arquivoImportacaoAlmox" name="arquivo" type="file" accept=".csv,.xlsx,.xls,.xml" required>
+                <div class="tool-upload-box">
+                  <div class="tool-upload-copy">
+                    <label for="arquivoImportacaoAlmox">Arquivo do inventário de materiais</label>
+                    <p>Clique no botão abaixo para escolher o arquivo CSV, XLSX, XLS ou XML do Almoxarifado.</p>
+                  </div>
+                  <div class="tool-upload-row">
+                    <input id="arquivoImportacaoAlmox" class="tool-upload-input" name="arquivo" type="file" accept=".csv,.xlsx,.xls,.xml" required>
+                    <label for="arquivoImportacaoAlmox" class="tool-upload-trigger">Escolher arquivo</label>
+                    <button id="btnImportarArquivoAlmox" type="submit" class="btn-primary tool-upload-submit">Importar arquivo</button>
+                    <a href="/api/exportar-almoxarifado" target="_blank" class="tool-secondary-link tool-upload-submit" style="text-decoration:none;">Exportar PDF</a>
+                  </div>
+                  <span id="arquivoImportacaoNomeAlmox" class="tool-upload-filename">Nenhum arquivo selecionado</span>
                 </div>
-                <button type="submit" class="btn-primary">Importar no inventário de materiais de consumo</button>
-                <a href="/api/exportar-almoxarifado" target="_blank" class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Exportar PDF de materiais</a>
               </form>
             </div>
 
@@ -284,8 +290,8 @@
           <div class="warehouse-grid">
             <section class="tool-panel">
               <span class="inventory-kicker">Operação</span>
-              <h2>Saída de Materiais</h2>
-              <p class="tool-panel-copy">Selecione um material do inventário de materiais de consumo e registre a saída para consumo, obra ou frente de trabalho.</p>
+              <h2>Saída de materiais</h2>
+              <p class="tool-panel-copy">Selecione um material do Almoxarifado e registre a saída para consumo, obra ou frente de trabalho.</p>
 
               <div class="tool-form-compact">
                 <div class="form-group">
@@ -296,7 +302,7 @@
 
                 <div id="almoxCardItem" class="warehouse-item-card is-empty">
                   <strong>Nenhum material selecionado</strong>
-                  <p>Escolha um item do inventário de materiais de consumo para liberar o registro de saída.</p>
+                  <p>Escolha um item do Almoxarifado para liberar o registro de saída.</p>
                 </div>
 
                 <div class="tool-form">
@@ -328,8 +334,8 @@
 
             <section class="tool-panel tool-panel-secondary">
               <span class="inventory-kicker">Consulta rápida</span>
-              <h2>Almoxarifado</h2>
-              <p class="tool-panel-copy">Pesquise materiais disponíveis, acompanhe níveis de estoque e selecione rapidamente o item para a operação.</p>
+              <h2>Inventário do Almoxarifado</h2>
+              <p class="tool-panel-copy">Pesquise materiais disponíveis, acompanhe o estoque e selecione rapidamente o item para a operação.</p>
 
               <div class="inventory-toolbar">
                 <div class="inventory-search-block">
@@ -340,7 +346,7 @@
 
               <div class="inventory-meta">
                 <p id="resumoAlmox" class="inventory-summary">Carregando materiais...</p>
-                <span class="inventory-hint">Itens mantidos exclusivamente no inventário de materiais de consumo.</span>
+                <span class="inventory-hint">Itens mantidos exclusivamente no Almoxarifado.</span>
               </div>
 
               <div class="tabela-wrap">
@@ -350,10 +356,10 @@
                       <th class="col-codigo">Código</th>
                       <th class="col-ferramenta">Material</th>
                       <th class="col-categoria">Categoria</th>
-                      <th class="col-marca">Especificao</th>
+                      <th class="col-marca">Especificação</th>
                       <th class="col-num">Estoque</th>
                       <th class="col-categoria">Unid.</th>
-                      <th class="col-categoria">Mn.</th>
+                      <th class="col-categoria">Mín.</th>
                       <th class="col-estado">Controle</th>
                       <th class="col-acao">Ação</th>
                     </tr>
@@ -366,7 +372,7 @@
 
           <section class="painel-lista warehouse-history">
             <div class="painel-tabela-head">
-              <h2>altimas saídas de materiais de consumo</h2>
+              <h2>Últimas movimentações do Almoxarifado</h2>
               <span id="resumoMovAlmox" class="inventory-summary">Carregando histórico...</span>
             </div>
 
@@ -398,6 +404,13 @@
     let movimentosAlmox = [];
     let materialSelecionado = null;
     let estoqueBaixoLimite = 2;
+
+    function atualizarNomeArquivoImportacaoAlmox() {
+      const arquivoInput = document.getElementById("arquivoImportacaoAlmox");
+      const nomeHost = document.getElementById("arquivoImportacaoNomeAlmox");
+      if (!arquivoInput || !nomeHost) return;
+      nomeHost.textContent = arquivoInput.files?.[0]?.name || "Nenhum arquivo selecionado";
+    }
 
     async function getJson(url, options = {}) {
       const res = await fetch(url, { credentials: "same-origin", ...options });
@@ -436,12 +449,12 @@
         .replaceAll('"', "&quot;");
     }
 
-    function calcularControle(estoque) {
+    function calcularControle(estoque, estoqueMinimo = estoqueBaixoLimite) {
       const numero = Number(estoque || 0);
       if (numero <= 0) {
         return { label: "Crítico", className: "critical" };
       }
-      const minimo = Number((materialSelecionado && materialSelecionado.estoque_minimo) || estoqueBaixoLimite);
+      const minimo = Number(estoqueMinimo || estoqueBaixoLimite);
       if (numero <= minimo) {
         return { label: "Baixo", className: "low" };
       }
@@ -485,7 +498,7 @@
 
       if (!materialSelecionado) {
         card.className = "warehouse-item-card is-empty";
-        card.innerHTML = "<strong>Nenhum material selecionado</strong><p>Escolha um item do inventário de materiais de consumo para liberar o registro de saída.</p>";
+        card.innerHTML = "<strong>Nenhum material selecionado</strong><p>Escolha um item do Almoxarifado para liberar o registro de saída.</p>";
         btn.disabled = true;
         return;
       }
@@ -493,7 +506,7 @@
       card.className = "warehouse-item-card";
       card.innerHTML = `
         <strong>${escapeHtml(materialSelecionado.codigo || "")} - ${escapeHtml(materialSelecionado.ferramenta || "")}</strong>
-        <p>Categoria: ${escapeHtml(materialSelecionado.categoria || "-")} | Marca / Modelo: ${escapeHtml(materialSelecionado.marca_modelo || "-")}</p>
+        <p>Categoria: ${escapeHtml(materialSelecionado.categoria || "-")} | Especificação: ${escapeHtml(materialSelecionado.marca_modelo || "-")}</p>
         <p>Estoque disponível: ${escapeHtml(formatarNumero(materialSelecionado.estoque_atual ?? materialSelecionado.quantidade_total ?? 0))} | Localização: ${escapeHtml(materialSelecionado.localizacao || "-")}</p>
       `;
       btn.disabled = false;
@@ -514,23 +527,27 @@
       tbody.innerHTML = "";
 
       lista.forEach((item) => {
-        const controle = calcularControle(item.estoque_atual ?? item.quantidade_total ?? 0);
+        const controle = calcularControle(item.estoque_atual ?? item.quantidade_total ?? 0, item.estoque_minimo);
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="col-codigo" data-label="Código">${escapeHtml(item.codigo || "")}</td>
           <td class="col-ferramenta" data-label="Material" title="${escapeHtml(item.ferramenta || "")}">${escapeHtml(item.ferramenta || "")}</td>
           <td class="col-categoria" data-label="Categoria">${escapeHtml(item.categoria || "")}</td>
-          <td class="col-marca" data-label="Marca / Modelo" title="${escapeHtml(item.marca_modelo || "")}">${escapeHtml(item.marca_modelo || "")}</td>
+          <td class="col-marca" data-label="Especificação" title="${escapeHtml(item.marca_modelo || "")}">${escapeHtml(item.marca_modelo || "")}</td>
           <td class="col-num" data-label="Estoque">${formatarNumero(item.estoque_atual ?? item.quantidade_total ?? 0)}</td>
+          <td class="col-categoria" data-label="Unid.">${escapeHtml(item.unidade_medida || "-")}</td>
+          <td class="col-categoria" data-label="Mín.">${formatarNumero(item.estoque_minimo ?? estoqueBaixoLimite)}</td>
           <td class="col-estado" data-label="Controle"><span class="warehouse-state ${controle.className}">${controle.label}</span></td>
           <td class="col-acao" data-label="Ação"><button type="button" class="btn-editar-item" data-item-id="${item.id}">Selecionar</button></td>
         `;
         tbody.appendChild(tr);
       });
 
-      resumo.textContent = `${lista.length} material(is) exibido(s) no inventário de materiais de consumo`;
+      resumo.textContent = lista.length === 1
+        ? "1 material exibido no inventário do Almoxarifado."
+        : `${lista.length} materiais exibidos no inventário do Almoxarifado.`;
       if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Nenhum material encontrado no inventário de materiais de consumo.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Nenhum material encontrado no Almoxarifado.</td></tr>';
       }
       atualizarCards(lista);
     }
@@ -539,10 +556,12 @@
       const tbody = document.getElementById("tabelaMovAlmox");
       const resumo = document.getElementById("resumoMovAlmox");
       tbody.innerHTML = "";
-      resumo.textContent = `${movimentosAlmox.length} operação(ões) recentes em materiais de consumo`;
+      resumo.textContent = movimentosAlmox.length === 1
+        ? "1 movimentação recente no Almoxarifado."
+        : `${movimentosAlmox.length} movimentações recentes no Almoxarifado.`;
 
       if (!movimentosAlmox.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma saída registrada ainda para o Almoxarifado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Nenhuma movimentação registrada ainda no Almoxarifado.</td></tr>';
         return;
       }
 
@@ -553,7 +572,7 @@
           <td data-label="Data">${escapeHtml(data)}</td>
           <td data-label="Código">${escapeHtml(mov.codigo || "")}</td>
           <td data-label="Material">${escapeHtml(mov.ferramenta || "")}</td>
-          <td data-label="Operação">Saída</td>
+          <td data-label="Operação">${escapeHtml(String(mov.tipo || "").toUpperCase() === "ENTRADA" ? "Entrada" : "Saída")}</td>
           <td data-label="Quantidade">${escapeHtml(formatarNumero(mov.quantidade || 0))}</td>
           <td data-label="Responsável">${escapeHtml(mov.funcionario || "-")}</td>
           <td data-label="Obra">${escapeHtml(mov.obra || "-")}</td>
@@ -620,7 +639,19 @@
     async function importarArquivoAlmox(event) {
       event.preventDefault();
       const host = document.getElementById("resultadoImportacaoAlmox");
-      host.textContent = "Importando arquivo no inventário de materiais de consumo...";
+      const arquivoInput = document.getElementById("arquivoImportacaoAlmox");
+      const btn = document.getElementById("btnImportarArquivoAlmox");
+      const arquivoSelecionado = arquivoInput?.files?.[0];
+      if (!arquivoSelecionado) {
+        host.textContent = "Escolha um arquivo antes de importar.";
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Importando...";
+      }
+      host.textContent = "Importando arquivo no Almoxarifado...";
 
       try {
         const form = new FormData(event.target);
@@ -637,6 +668,7 @@
         `;
 
         event.target.reset();
+        atualizarNomeArquivoImportacaoAlmox();
         await carregarPagina();
       } catch (err) {
         if (!redirecionarErro(err)) {
@@ -644,6 +676,11 @@
             ? `<br>Importado: ${err.data.relatorio.total_importado || 0} | Erros: ${err.data.relatorio.total_erros || 0}`
             : "";
           host.innerHTML = `<strong>Falha na importação:</strong> ${err.message}${detalhes}`;
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Importar arquivo";
         }
       }
     }
@@ -658,7 +695,7 @@
 
         estoqueBaixoLimite = Number(configuracoesEstoque.estoque_baixo_limite || 2) || 2;
         itensAlmox = itens;
-        movimentosAlmox = movimentacoes.filter((mov) => String(mov.tipo || "").toUpperCase() === "SAIDA");
+        movimentosAlmox = movimentacoes;
 
         preencherSugestoes();
         aplicarBusca();
@@ -670,13 +707,14 @@
         atualizarMaterialSelecionado();
       } catch (err) {
         if (!redirecionarErro(err)) {
-          document.getElementById("resumoAlmox").textContent = err.message || "Erro ao carregar almoxarifado.";
-          document.getElementById("resumoMovAlmox").textContent = "Erro ao carregar histórico.";
+          document.getElementById("resumoAlmox").textContent = err.message || "Não foi possível carregar o inventário do Almoxarifado.";
+          document.getElementById("resumoMovAlmox").textContent = "Não foi possível carregar o histórico do Almoxarifado.";
         }
       }
     }
 
     document.getElementById("buscaAlmox").addEventListener("input", aplicarBusca);
+    document.getElementById("arquivoImportacaoAlmox").addEventListener("change", atualizarNomeArquivoImportacaoAlmox);
     document.getElementById("almoxBuscaCodigo").addEventListener("change", (event) => {
       selecionarMaterialPorTermo(event.target.value);
     });
@@ -698,6 +736,7 @@
     document.getElementById("btnSaidaMaterial").addEventListener("click", registrarSaidaMaterial);
     document.getElementById("formImportacaoAlmox").addEventListener("submit", importarArquivoAlmox);
 
+    atualizarNomeArquivoImportacaoAlmox();
     carregarPagina();
   </script>
 </body>

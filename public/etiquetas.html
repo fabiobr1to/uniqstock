@@ -1,246 +1,429 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etiquetas | UniqStock</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="sidebar-auth.js" defer></script>
-    <script src="topbar-user.js" defer></script>
-    <script src="mobile-menu.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Etiquetas | UniqStock</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sidebar-auth.js" defer></script>
+  <script src="topbar-user.js" defer></script>
+  <script src="mobile-menu.js" defer></script>
 </head>
-
 <body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="brand-logo"></div>
+        <p>Sistema de Inventário</p>
+      </div>
 
-    <div class="app-layout">
-
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <a href="https://wa.me/5595991109917?text=Ol%C3%A1%20UniqCode%2C%20quero%20suporte%20no%20UniqStock" target="_blank" rel="noopener noreferrer" class="brand-logo-link"><img src="img/uniqstock-logo.png" alt="UniqCode" class="brand-logo"></a>
-                <p>Sistema de Inventário</p>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
-                <a href="index.html"><span class="sidebar-icon">📦</span> Inventário</a>
-                <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
-                <a href="etiquetas.html" class="ativo"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
-                <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
-                <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
-                <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
-                <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
-                <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
-                    <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
-                <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html"><span class="sidebar-icon">🏠</span> Painel</a>
+        <a href="index.html"><span class="sidebar-icon">📦</span> Inventário da Ferramentaria</a>
+        <a href="almoxarifado.html"><span class="sidebar-icon">📋</span> Almoxarifado</a>
+        <a href="cadastro-ferramenta.html"><span class="sidebar-icon">🛠️</span> Cadastrar Ferramenta</a>
+        <a href="etiquetas.html" class="ativo"><span class="sidebar-icon">🏷️</span> Etiquetas</a>
+        <a href="scanner.html"><span class="sidebar-icon">📷</span> Scanner</a>
+        <a href="movimentacoes.html"><span class="sidebar-icon">📑</span> Movimentações</a>
+        <a href="usuarios.html"><span class="sidebar-icon">👥</span> Usuários</a>
+        <a href="perfil.html"><span class="sidebar-icon">👤</span> Perfil</a>
+        <a href="permissoes.html"><span class="sidebar-icon">🛡️</span> Permissões</a>
+        <a href="auditoria.html"><span class="sidebar-icon">🧾</span> Auditoria</a>
+        <a href="configuracoes.html"><span class="sidebar-icon">⚙️</span> Configurações</a>
       </nav>
 
-            <div class="sidebar-footer">
-                <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      <div class="sidebar-footer">
+        <a href="login.html"><span class="sidebar-icon">🚪</span> Sair</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <h2 id="etiquetasTitulo">Etiquetas</h2>
+        <p id="etiquetasDescricao">Geração e impressão de etiquetas com QR Code</p>
+      </header>
+
+      <div class="container">
+        <section class="painel-form">
+          <h2 id="etiquetasSelecaoTitulo">Selecionar ferramenta</h2>
+
+          <div class="form-group">
+            <label id="labelSelectItem" for="selectItem">Ferramenta</label>
+            <select id="selectItem"></select>
+          </div>
+
+          <button id="btnGerarEtiqueta" type="button" onclick="gerarEtiqueta()">
+            Gerar etiqueta
+          </button>
+        </section>
+
+        <section class="painel-lista">
+          <h2 id="etiquetasPreviewTitulo">Pré-visualização da etiqueta</h2>
+
+          <div class="etiqueta-box">
+            <div id="etiqueta" class="etiqueta-conteudo">
+              <p id="etiquetaEstadoVazio">Selecione uma ferramenta para gerar a etiqueta</p>
             </div>
-        </aside>
+          </div>
 
-        <main class="main-content">
+          <br>
 
-            <header class="page-header">
-                <h2>Etiquetas</h2>
-                <p>Geração e impressão de etiquetas com QR Code</p>
-            </header>
+          <button type="button" onclick="imprimirEtiqueta()">
+            Imprimir etiqueta
+          </button>
+        </section>
+      </div>
+    </main>
+  </div>
 
-            <div class="container">
+  <script>
+    let itens = [];
 
-                <section class="painel-form">
-                    <h2>Selecionar item</h2>
+    function atualizarLinkSidebar(seletor, href, label) {
+      const link = document.querySelector(seletor);
+      if (!link) return;
+      const iconHtml = link.querySelector(".sidebar-icon")?.outerHTML || "";
+      link.setAttribute("href", href);
+      link.innerHTML = `${iconHtml} ${label}`;
+    }
 
-                    <div class="form-group">
-                        <label for="selectItem">Ferramenta</label>
-                        <select id="selectItem"></select>
-                    </div>
+    function obterModuloAtual() {
+      const modulo = new URLSearchParams(window.location.search).get("module");
+      if (String(modulo || "").toLowerCase() === "almoxarifado") {
+        return {
+          key: "almoxarifado",
+          titulo: "Etiquetas do Almoxarifado",
+          descricao: "Geração e impressão de etiquetas com QR Code para os materiais do almoxarifado.",
+          itemLabel: "Material",
+          itemLabelLower: "material",
+          itemLabelPlural: "materiais",
+          listaUrl: "/api/almoxarifado/itens",
+          qrUrl: (id) => `/api/almoxarifado/qrcode/${id}`,
+          balcaoHref: "balcao-almoxarifado.html",
+          balcaoLabel: "Balcão do Almoxarifado",
+          inventarioHref: "almoxarifado.html",
+          inventarioLabel: "Inventário do Almoxarifado",
+          scannerHref: "scanner.html?module=almoxarifado",
+          etiquetasHref: "etiquetas.html?module=almoxarifado",
+          cadastroHref: "cadastro-almoxarifado.html",
+          cadastroLabel: "Cadastrar material",
+          movimentacoesHref: "movimentacoes-almoxarifado.html",
+          movimentacoesLabel: "Histórico do Almoxarifado"
+        };
+      }
 
-                    <button type="button" onclick="gerarEtiqueta()">
-                        Gerar etiqueta
-                    </button>
-                </section>
+      return {
+        key: "ferramentaria",
+        titulo: "Etiquetas da Ferramentaria",
+        descricao: "Geração e impressão de etiquetas com QR Code.",
+        itemLabel: "Ferramenta",
+        itemLabelLower: "ferramenta",
+        itemLabelPlural: "ferramentas",
+        listaUrl: "/api/itens",
+        qrUrl: (id) => `/api/qrcode/${id}`,
+        balcaoHref: "ferramentaria.html",
+        balcaoLabel: "Balcão da Ferramentaria",
+        inventarioHref: "index.html",
+        inventarioLabel: "Inventário da Ferramentaria",
+        scannerHref: "scanner.html",
+        etiquetasHref: "etiquetas.html",
+        cadastroHref: "cadastro-ferramenta.html",
+        cadastroLabel: "Cadastrar Ferramenta",
+        movimentacoesHref: "movimentacoes-ferramentaria.html",
+        movimentacoesLabel: "Histórico da Ferramentaria"
+      };
+    }
 
-                <section class="painel-lista">
-                    <h2>Pré-visualização da etiqueta</h2>
+    const moduleConfig = obterModuloAtual();
 
-                    <div class="etiqueta-box">
-                        <div id="etiqueta" class="etiqueta-conteudo">
-                            <p>Selecione uma ferramenta para gerar a etiqueta</p>
-                        </div>
-                    </div>
+    function ajustarLinksDoModulo() {
+      const linkEtiquetas = document.querySelector('.sidebar-nav a[href="etiquetas.html"]');
+      if (linkEtiquetas) linkEtiquetas.setAttribute("href", moduleConfig.etiquetasHref);
 
-                    <br>
+      const linkScanner = document.querySelector('.sidebar-nav a[href="scanner.html"]');
+      if (linkScanner) linkScanner.setAttribute("href", moduleConfig.scannerHref);
 
-                    <button type="button" onclick="imprimirEtiqueta()">
-                        Imprimir etiqueta
-                    </button>
-                </section>
+      atualizarLinkSidebar('.sidebar-nav a[href="index.html"]', moduleConfig.balcaoHref, moduleConfig.balcaoLabel);
+      atualizarLinkSidebar('.sidebar-nav a[href="almoxarifado.html"]', moduleConfig.inventarioHref, moduleConfig.inventarioLabel);
+      atualizarLinkSidebar('.sidebar-nav a[href="cadastro-ferramenta.html"]', moduleConfig.cadastroHref, moduleConfig.cadastroLabel);
+      atualizarLinkSidebar('.sidebar-nav a[href="movimentacoes.html"]', moduleConfig.movimentacoesHref, moduleConfig.movimentacoesLabel);
+    }
 
-            </div>
+    function aplicarRotulosDoModulo() {
+      document.title = `${moduleConfig.titulo} | UniqStock`;
+      document.getElementById("etiquetasTitulo").textContent = moduleConfig.titulo;
+      document.getElementById("etiquetasDescricao").textContent = moduleConfig.descricao;
+      document.getElementById("etiquetasSelecaoTitulo").textContent = `Selecionar ${moduleConfig.itemLabelLower}`;
+      document.getElementById("labelSelectItem").textContent = moduleConfig.itemLabel;
+      document.getElementById("etiquetaEstadoVazio").textContent = `Selecione ${moduleConfig.itemLabelLower === "ferramenta" ? "uma ferramenta" : "um material"} para gerar a etiqueta`;
+    }
 
-        </main>
+    async function carregarItens() {
+      try {
+        const res = await fetch(moduleConfig.listaUrl, { credentials: "same-origin" });
+        itens = await res.json();
 
-    </div>
+        const select = document.getElementById("selectItem");
+        select.innerHTML = `<option value="">Selecione ${moduleConfig.itemLabelLower === "ferramenta" ? "uma ferramenta" : "um material"}</option>`;
 
-    <script>
-        let itens = [];
+        itens.forEach((item) => {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = `${item.codigo || "Código não informado"} - ${item.ferramenta}`;
+          select.appendChild(option);
+        });
 
-        async function carregarItens() {
-            try {
-                const res = await fetch("/api/itens");
-                itens = await res.json();
-
-                const select = document.getElementById("selectItem");
-                select.innerHTML = '<option value="">Selecione uma ferramenta</option>';
-
-                itens.forEach(item => {
-                    const option = document.createElement("option");
-                    option.value = item.id; // AQUI é o ID, não o código
-                    option.textContent = `${item.codigo || "Sem código"} - ${item.ferramenta}`;
-                    select.appendChild(option);
-                });
-
-                const params = new URLSearchParams(window.location.search);
-                const idParam = params.get("id");
-                if (idParam) {
-                    select.value = idParam;
-                    gerarEtiqueta();
-                }
-            } catch (erro) {
-                console.error("Erro ao carregar itens:", erro);
-            }
+        const params = new URLSearchParams(window.location.search);
+        const idParam = params.get("id");
+        if (idParam) {
+          select.value = idParam;
+          gerarEtiqueta();
         }
+      } catch (erro) {
+        console.error("Erro ao carregar itens:", erro);
+      }
+    }
 
-        async function gerarEtiqueta() {
-            const id = document.getElementById("selectItem").value;
+    async function gerarEtiqueta() {
+      const id = document.getElementById("selectItem").value;
 
-            if (!id) {
-                document.getElementById("etiqueta").innerHTML = `
-        <p>Selecione uma ferramenta para gerar a etiqueta</p>
-      `;
-                return;
-            }
-
-            try {
-                const res = await fetch(`/api/qrcode/${id}`);
-                const data = await res.json();
-
-                if (!res.ok) {
-                    document.getElementById("etiqueta").innerHTML = `
-          <p>${data.error || "Erro ao gerar QR Code"}</p>
+      if (!id) {
+        document.getElementById("etiqueta").innerHTML = `
+          <p>Selecione ${moduleConfig.itemLabelLower === "ferramenta" ? "uma ferramenta" : "um material"} para gerar a etiqueta</p>
         `;
-                    return;
-                }
+        return;
+      }
 
-                const item = itens.find(i => String(i.id) === String(id));
+      try {
+        const res = await fetch(moduleConfig.qrUrl(id), { credentials: "same-origin" });
+        const data = await res.json();
 
-                document.getElementById("etiqueta").innerHTML = `
-        <img src="/img/uniqstock-logo.png" alt="UniqCode" class="etiqueta-logo">
-        <h3>${item?.ferramenta || "-"}</h3>
-        <div class="etiqueta-info">
-          <p><strong>Código:</strong> ${item?.codigo || "-"}</p>
-          <p><strong>Categoria:</strong> ${item?.categoria || "-"}</p>
-        </div>
-        <img src="${data.qr}" alt="QR Code" class="etiqueta-qr">
-      `;
-            } catch (erro) {
-                document.getElementById("etiqueta").innerHTML = `
-        <p>Erro ao gerar etiqueta</p>
-      `;
-                console.error(erro);
-            }
+        if (!res.ok) {
+          document.getElementById("etiqueta").innerHTML = `
+            <p>${data.error || "Não foi possível gerar o QR Code."}</p>
+          `;
+          return;
         }
 
-        function imprimirEtiqueta() {
-            const conteudo = document.getElementById("etiqueta").outerHTML;
-            const janela = window.open("", "_blank");
+        const item = itens.find((entry) => String(entry.id) === String(id));
+        const codigo = item?.codigo || "-";
+        const categoria = item?.categoria || "-";
+        const marcaModelo = item?.marca_modelo || "-";
+        const nomeItem = item?.ferramenta || "-";
+        const qrLegenda = `${moduleConfig.key === "almoxarifado" ? "ALM" : "PRZ"}-${codigo}`;
 
-            janela.document.write(`
-      <html>
-        <head>
-          <title>Imprimir etiqueta</title>
-          <style>
-            @page{ size:A4; margin:8mm; }
-            body{
-              font-family:Arial, sans-serif;
-              margin:0;
-              min-height:100vh;
-              display:flex;
-              align-items:flex-start;
-              justify-content:flex-start;
-              background:#fff;
-              padding:8mm;
-              box-sizing:border-box;
-            }
-            .etiqueta-conteudo{
-              width:50mm;
-              min-height:42mm;
-              display:flex;
-              flex-direction:column;
-              align-items:center;
-              justify-content:flex-start;
-              text-align:center;
-              border:2px solid #000;
-              border-radius:4mm;
-              padding:3mm 2.5mm;
-              gap:0;
-              box-sizing:border-box;
-            }
-            .etiqueta-conteudo > p{
-              width:100%;
-              text-align:center;
-            }
-            .etiqueta-conteudo h3{
-              font-size:14px;
-              margin:0 0 1.1mm;
-              line-height:1.3;
-              width:100%;
-              text-align:center;
-            }
-            .etiqueta-conteudo p{
-              font-size:12px;
-              margin:0;
-              line-height:1.25;
-              width:100%;
-              text-align:center;
-            }
-            .etiqueta-logo{ max-width:24mm; height:auto; margin-bottom:1.6mm; }
-            .etiqueta-info{
-              display:flex;
-              flex-direction:column;
-              gap:.3mm;
-              width:100%;
-              text-align:center;
-              margin:0 0 1.6mm;
-              align-items:center;
-            }
-            .etiqueta-qr{ width:20mm; height:20mm; margin-top:0; }
-          </style>
-        </head>
-        <body>
-          ${conteudo}
-        </body>
-      </html>
-    `);
+        document.getElementById("etiqueta").innerHTML = `
+          <div class="etiqueta-topo">
+            <img src="/img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="etiqueta-logo">
+            <p class="etiqueta-codigo">Código: ${codigo}</p>
+            <h3>${nomeItem}</h3>
+          </div>
+          <div class="etiqueta-corpo">
+            <div class="etiqueta-detalhes">
+              <div class="etiqueta-info">
+                <p class="etiqueta-info-titulo">Categoria:</p>
+                <p class="etiqueta-info-valor etiqueta-info-valor-limite">${categoria}</p>
+              </div>
+              <p class="etiqueta-modelo"><strong>Marca / Modelo:</strong> <span>${marcaModelo}</span></p>
+            </div>
+            <div class="etiqueta-qr-area">
+              <img src="${data.qr}" alt="QR Code" class="etiqueta-qr">
+              <p class="etiqueta-qr-legenda">${qrLegenda}</p>
+            </div>
+          </div>
+        `;
+        return;
 
-            janela.document.close();
-            janela.focus();
-            janela.print();
-        }
+        document.getElementById("etiqueta").innerHTML = `
+          <img src="/img/uniqstock-logo.png" alt="PRZ Serviços Eletromecânicos" class="etiqueta-logo">
+          <p class="etiqueta-codigo">Código: ${item?.codigo || "-"}</p>
+          <h3>${item?.ferramenta || "-"}</h3>
+          <div class="etiqueta-info">
+            <p><strong>Categoria:</strong> ${item?.categoria || "-"}</p>
+            <p><strong>Marca / Modelo:</strong> ${item?.marca_modelo || "-"}</p>
+          </div>
+          <img src="${data.qr}" alt="QR Code" class="etiqueta-qr">
+        `;
+      } catch (erro) {
+        document.getElementById("etiqueta").innerHTML = `
+          <p>Não foi possível gerar a etiqueta.</p>
+        `;
+        console.error(erro);
+      }
+    }
 
-        carregarItens();
-    </script>
+    window.gerarEtiqueta = gerarEtiqueta;
 
+    function imprimirEtiqueta() {
+      const conteudo = document.getElementById("etiqueta").outerHTML;
+      const janela = window.open("", "_blank");
+
+      janela.document.write(`
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Imprimir etiqueta</title>
+            <style>
+              @page{ size:A4; margin:8mm; }
+              body{
+                font-family:Arial, sans-serif;
+                margin:0;
+                min-height:100vh;
+                display:flex;
+                align-items:flex-start;
+                justify-content:flex-start;
+                background:#fff;
+                padding:8mm;
+                box-sizing:border-box;
+              }
+              .etiqueta-conteudo{
+                width:95mm;
+                max-width:100%;
+                min-height:95mm;
+                display:flex;
+                flex-direction:column;
+                align-items:stretch;
+                justify-content:flex-start;
+                text-align:center;
+                border:none;
+                border-radius:0;
+                padding:5mm 5mm 4.5mm;
+                gap:0;
+                box-sizing:border-box;
+              }
+              .etiqueta-topo{
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                gap:1.6mm;
+                margin-bottom:4mm;
+              }
+              .etiqueta-conteudo h3{
+                font-size:18px;
+                font-weight:800;
+                margin:0;
+                line-height:1.24;
+                width:100%;
+                text-align:center;
+                display:-webkit-box;
+                -webkit-box-orient:vertical;
+                -webkit-line-clamp:2;
+                overflow:hidden;
+                min-height:calc(1.24em * 2);
+              }
+              .etiqueta-conteudo p{
+                font-size:12px;
+                margin:0;
+                line-height:1.25;
+                width:100%;
+                text-align:center;
+              }
+              .etiqueta-logo{
+                max-width:54mm;
+                height:auto;
+              }
+              .etiqueta-codigo{
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                width:auto !important;
+                min-width:60mm;
+                max-width:100%;
+                padding:2.2mm 5mm;
+                border:1px solid rgba(16, 84, 148, .28);
+                border-radius:999px;
+                background:linear-gradient(90deg, rgba(0, 157, 220, .12) 0%, rgba(140, 198, 63, .18) 100%);
+                color:#12324f;
+                font-size:26px !important;
+                font-weight:800;
+                letter-spacing:.03em;
+                line-height:1.1;
+                margin:0 !important;
+                text-align:center;
+                box-shadow:0 .6mm 1.4mm rgba(18, 50, 79, .08);
+              }
+              .etiqueta-corpo{
+                display:flex;
+                align-items:flex-end;
+                gap:4.5mm;
+                flex:1;
+              }
+              .etiqueta-detalhes{
+                flex:1;
+                display:flex;
+                flex-direction:column;
+                justify-content:flex-end;
+                gap:3.2mm;
+                min-width:0;
+                padding-bottom:1.2mm;
+              }
+              .etiqueta-info{
+                display:flex;
+                flex-direction:column;
+                gap:.7mm;
+                width:100%;
+                text-align:center;
+                margin:0;
+                align-items:center;
+              }
+              .etiqueta-info-titulo{
+                font-size:15px !important;
+                line-height:1.1;
+              }
+              .etiqueta-info-valor{
+                font-size:14px !important;
+                line-height:1.18;
+              }
+              .etiqueta-info-valor-limite{
+                display:-webkit-box;
+                -webkit-box-orient:vertical;
+                -webkit-line-clamp:2;
+                overflow:hidden;
+                max-width:100%;
+                min-height:calc(1.18em * 2);
+              }
+              .etiqueta-modelo{
+                font-size:14px !important;
+                line-height:1.18;
+              }
+              .etiqueta-modelo strong{
+                font-weight:800;
+              }
+              .etiqueta-qr-area{
+                width:31mm;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                gap:1.4mm;
+                flex-shrink:0;
+              }
+              .etiqueta-qr{
+                width:31mm;
+                height:31mm;
+                margin-top:0;
+              }
+              .etiqueta-qr-legenda{
+                font-size:11px !important;
+                font-weight:800;
+                letter-spacing:.03em;
+                line-height:1.1;
+              }
+            </style>
+          </head>
+          <body>
+            ${conteudo}
+          </body>
+        </html>
+      `);
+
+      janela.document.close();
+      janela.focus();
+      janela.print();
+    }
+
+    aplicarRotulosDoModulo();
+    ajustarLinksDoModulo();
+    carregarItens();
+  </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-
